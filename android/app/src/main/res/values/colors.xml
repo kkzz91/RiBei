@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      启动时的窗口底色。默认模板用的是纯白（?android:colorBackground），
+      而 App 自己的底色是暖纸色 —— 冷启动会先闪一下白。
+      这里改成和 App 一致的纸色，启动看起来是连续的。
+      深色模式的值在 values-night/colors.xml（同名资源按配置自动切换）。
+    -->
+    <color name="launch_background">#FFFAF8F5</color>
+</resources>

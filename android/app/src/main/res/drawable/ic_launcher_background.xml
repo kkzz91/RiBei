@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  自适应图标背景层：青玉 → 草绿 → 暖橙 的对角渐变，
+  和 tools/make_icon.py 里生成前景时用的渐变是同一套颜色。
+  android:angle=315 表示从左上到右下。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="315"
+        android:startColor="#FF1F8F7A"
+        android:centerColor="#FF3FA97F"
+        android:endColor="#FFE8963A"
+        android:type="linear" />
+</shape>

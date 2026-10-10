@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  告诉资源压缩器：通知图标无论如何都要保留。
+  否则 release 构建可能把它裁掉，导致通知静默失效或图标空白。
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_notification" />

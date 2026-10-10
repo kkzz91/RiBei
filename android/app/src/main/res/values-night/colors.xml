@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色模式下启动窗口的底色，对应 App 深色主题的 paper 色 -->
+    <color name="launch_background">#FF14110F</color>
+</resources>
