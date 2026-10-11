@@ -236,18 +236,24 @@ class AppTheme {
           TargetPlatform.iOS: FadeForwardsPageTransitionsBuilder(),
         },
       ),
+      // 顶栏做成**独立的一条彩色条**（用户要求：像微信聊天页顶上那块名字栏 ——
+      // 每个页面都要有、而且要和页面内容明确分开）。
+      // 用品牌玉青的深色档打底 + 白字白图标，浅深色两种模式下都读得清。
       appBarTheme: AppBarTheme(
-        backgroundColor: p.paper,
+        backgroundColor: p.jadeDeep,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
-        foregroundColor: p.ink,
-        titleTextStyle: TextStyle(
-          color: p.ink,
+        foregroundColor: Colors.white,
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
           fontSize: 20,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
+          letterSpacing: 0.4,
         ),
+        iconTheme: const IconThemeData(color: Colors.white),
+        actionsIconTheme: const IconThemeData(color: Colors.white),
       ),
       cardTheme: CardThemeData(
         color: p.card,

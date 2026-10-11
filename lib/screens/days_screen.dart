@@ -7,7 +7,6 @@ import '../models/milestone.dart';
 import '../providers/countdown_provider.dart';
 import '../providers/milestone_provider.dart';
 import '../theme/app_theme.dart';
-import '../theme/digit_fonts.dart';
 import '../utils/formatters.dart';
 import '../utils/haptics.dart';
 import '../widgets/empty_state.dart';
@@ -55,8 +54,7 @@ class DaysScreen extends StatelessWidget {
               size: 21,
               color: context.palette.jade,
               tracking: 1.2,
-              depth: 1.6,
-              strokeWidth: 1,
+              strokeWidth: 1.2,
             ),
           ),
         ),
@@ -92,16 +90,13 @@ class DaysScreen extends StatelessWidget {
                 ],
                 if (rest.isNotEmpty) ...[
                   _Banner('全部日子', trailing: '共 ${rows.length} 条'),
-                  _Notepad(
-                    children: <Widget>[
-                      for (final r in rest)
-                        _DayTile(
-                          row: r,
-                          onTap: () => _openDetail(context, r),
-                          onLongPress: () => _rowActions(context, r),
-                        ),
-                    ],
-                  ),
+                  // **每一条独立成框**（用户要求：不要连成一整张纸）
+                  for (final r in rest)
+                    _DayTile(
+                      row: r,
+                      onTap: () => _openDetail(context, r),
+                      onLongPress: () => _rowActions(context, r),
+                    ),
                 ],
               ],
             ),
@@ -390,18 +385,16 @@ class _HeadlineCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 14),
-              // 数字**不再带那个小"天"**（用户要求删掉），就一个大数
+              // 数字**不带那个小"天"**，而且**字体统一** ——
+              // 自选的数字字体只在点进去的详情页生效（用户要求：列表页别混着来）
               Text(
                 '${row.days}',
-                style: DigitFont.apply(
-                  TextStyle(
-                    fontSize: 58,
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -2,
-                    color: color,
-                  ),
-                  row.digitFont,
+                style: TextStyle(
+                  fontSize: 58,
+                  height: 1,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -2,
+                  color: color,
                 ),
               ),
             ],
@@ -414,9 +407,9 @@ class _HeadlineCard extends StatelessWidget {
 
 // ---------------------------------------------------------------- 紧凑行
 
-/// 普通的一条：名字 + 还有/已经 在左，彩色数字徽标在右。
-/// **刻意做得很矮**（上下各 7dp）—— 用户反馈"每一条都很大，一次性看不完"；
-/// 字反而**比上一版大**（16dp），就是"字调大、格子缩矮"。
+/// 普通的一条：**自己一个独立的框**（用户要求别连在一起），
+/// 名字 + 还有/已经 在左，彩色数字徽标在右。
+/// 字号 17、上下各 13dp —— 用户要的"字大一点、把框撑饱满"。
 class _DayTile extends StatelessWidget {
   const _DayTile({
     required this.row,
@@ -433,121 +426,105 @@ class _DayTile extends StatelessWidget {
     final p = context.palette;
     final color = _badgeColor(row.past);
 
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 7, 12, 7),
-        child: Row(
-          children: [
-            if (row.pinned) ...[
-              Icon(Icons.push_pin, size: 14, color: color),
-              const SizedBox(width: 5),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: GestureDetector(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
+          decoration: BoxDecoration(
+            color: p.card,
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: p.line),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: p.isDark ? 0.26 : 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
             ],
-            Expanded(
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      row.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: p.ink,
+          ),
+          child: Row(
+            children: [
+              if (row.pinned) ...[
+                Icon(Icons.push_pin, size: 15, color: color),
+                const SizedBox(width: 6),
+              ],
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        row.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: p.ink,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 7),
-                  // 「还有 / 已经」**不缩小**，和名字一样大（用户明确要求）
-                  Text(
-                    row.past ? '已经' : '还有',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: p.inkSoft,
+                    const SizedBox(width: 8),
+                    // 「还有 / 已经」**和名字一样大**（用户明确要求别缩小）
+                    Text(
+                      row.past ? '已经' : '还有',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: p.inkSoft,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            _Badge(days: row.days, color: color, digitFont: row.digitFont),
-          ],
+              const SizedBox(width: 10),
+              _Badge(days: row.days, color: color),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// 彩色数字徽标：〔126 │ 天〕
+/// 彩色数字徽标。
 ///
-/// **数字和"天"是隔开的**（中间一道细白线）—— 用户对着参考图提的，
-/// 说这样"看起来更好看"。
+/// ⚠️ **宽度固定**：用户反馈"个位数和三位数框的长度不一样，要统一" ——
+/// 数字在固定宽的槽里居中，位数变了框也不变。
+/// ⚠️ **不带那个小「天」**（用户要求删掉）—— 方向看左边的「还有 / 已经」就够了。
+/// ⚠️ **字体统一**（用户要求：列表页别跟着自选字体走，那样看着乱；
+///    自选的数字字体只在**点进去的详情页**生效）。
 class _Badge extends StatelessWidget {
-  const _Badge({
-    required this.days,
-    required this.color,
-    required this.digitFont,
-  });
+  const _Badge({required this.days, required this.color});
 
   final int days;
   final Color color;
-  final int digitFont;
 
   @override
   Widget build(BuildContext context) {
-    final divider = Container(
-      width: 1,
-      height: 15,
-      color: Colors.white.withValues(alpha: 0.45),
-    );
-
     return Container(
-      height: 30,
+      width: 68,
+      height: 34,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(9),
       ),
       child: FittedBox(
         fit: BoxFit.scaleDown,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 0, 8, 0),
-              child: Text(
-                '$days',
-                maxLines: 1,
-                style: DigitFont.apply(
-                  const TextStyle(
-                    fontSize: 18,
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                    color: Colors.white,
-                  ),
-                  digitFont,
-                ),
-              ),
-            ),
-            divider,
-            const Padding(
-              padding: EdgeInsets.fromLTRB(8, 0, 10, 0),
-              child: Text(
-                '天',
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 13,
-                  height: 1,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
+        child: Text(
+          '$days',
+          maxLines: 1,
+          style: const TextStyle(
+            fontSize: 19,
+            height: 1,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+            color: Colors.white,
+          ),
         ),
       ),
     );
@@ -595,61 +572,6 @@ class _Banner extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// 把紧凑行装进**一张纸**里（行与行之间只留一条发丝线），
-/// 底下再垫一张错开的"下一页" —— 看着像一叠日历 / 便签本
-/// （用户要的"格子下面有点小重叠，看起来像日历"）。
-class _Notepad extends StatelessWidget {
-  const _Notepad({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    const radius = 18.0;
-    return Stack(
-      children: [
-        // 后面那张"下一页"：只在底下露出一点点
-        Positioned(
-          left: 12,
-          right: 12,
-          bottom: -7,
-          height: 26,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: p.line,
-              borderRadius: BorderRadius.circular(radius),
-            ),
-          ),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: p.card,
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: p.line),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.black.withValues(alpha: p.isDark ? 0.30 : 0.06),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              for (var i = 0; i < children.length; i++) ...[
-                if (i > 0)
-                  Divider(height: 1, indent: 14, endIndent: 14, color: p.line),
-                children[i],
-              ],
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

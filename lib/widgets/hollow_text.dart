@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
-/// "镂空透明立体字"：**描边 + 极淡填充 + 一道向下的暗色深度**。
+/// "镂空透明立体字"：**一圈深色外描边 + 一圈亮色描边 + 极淡填充**。
 ///
-/// 用户要的是参考图那种质感 —— 字是"空心的"，只有一圈亮边，里面透出背景，
-/// 底下再垫一层暗色做出厚度。纯用 `TextStyle` 做不出来，得叠三层 `Text`。
+/// 用户要的是参考图那种质感 —— 字是"空心"的、只有轮廓，里面透出背景。
+///
+/// ⚠️ 第一版画得不好：用了一层"往下偏移的暗色副本"做厚度，结果**在花纹背景上
+/// 一团糊**，在浅色背景上又像半透明。现在改成**只靠两道描边**：
+/// 一道更粗的深色在外（给字一圈"托底"，任何背景上都立得住），
+/// 一道亮色在内（字的主体），最后垫一层极淡填充让笔画内部有一点体积。
+/// **不要再加偏移副本** —— 那就是糊的来源。
 class HollowText extends StatelessWidget {
   const HollowText(
     this.text, {
@@ -11,8 +16,7 @@ class HollowText extends StatelessWidget {
     required this.size,
     required this.color,
     this.tracking = 5,
-    this.depth = 1.8,
-    this.strokeWidth = 1.2,
+    this.strokeWidth = 1.4,
   });
 
   final String text;
@@ -22,10 +26,6 @@ class HollowText extends StatelessWidget {
   final Color color;
 
   final double tracking;
-
-  /// 立体感的"厚度"：暗色那层往下偏多少
-  final double depth;
-
   final double strokeWidth;
 
   @override
@@ -41,26 +41,18 @@ class HollowText extends StatelessWidget {
       offset: Offset(tracking / 2, 0),
       child: Stack(
         children: [
-          // ③ 厚度：往右下偏一点的暗色。垫在最底下，露出来的那一线就是"立体"
-          Transform.translate(
-            offset: Offset(0, depth),
-            child: Text(
-              text,
-              textAlign: TextAlign.center,
-              style: base.copyWith(
-                color: Colors.black.withValues(alpha: 0.45),
-              ),
-            ),
-          ),
-          // ② 微微填充一点，不然空心字在浅色背景上会完全看不见
+          // ① 外圈深色描边：托底，让字在浅色/花纹背景上也立得住
           Text(
             text,
             textAlign: TextAlign.center,
             style: base.copyWith(
-              color: color.withValues(alpha: 0.16),
+              foreground: Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = strokeWidth * 2.8
+                ..color = Colors.black.withValues(alpha: 0.38),
             ),
           ),
-          // ① 描边：只画轮廓，中间是透的
+          // ② 亮色描边：字的主体（中间是透的）
           Text(
             text,
             textAlign: TextAlign.center,
@@ -70,6 +62,12 @@ class HollowText extends StatelessWidget {
                 ..strokeWidth = strokeWidth
                 ..color = color,
             ),
+          ),
+          // ③ 极淡填充：只为了让笔画内部有一点体积，不能重
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: base.copyWith(color: color.withValues(alpha: 0.22)),
           ),
         ],
       ),

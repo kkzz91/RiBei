@@ -103,8 +103,10 @@ class DaysPoster extends StatelessWidget {
                       padding: EdgeInsets.fromLTRB(20, topInset + 14, 20, 30),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
-                        // 整块内容**在视口里居中**（用户来回调过两次：偏下 → 偏上 → 居中）
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        // 品牌**钉在手机最顶上**（用户要求"放到手机最上面"），
+                        // 后面的内容跟着往下排 —— 所以这里不能整体居中，
+                        // 否则品牌会跟着飘到中间去。
+                        mainAxisAlignment: MainAxisAlignment.start,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           // ① 品牌：镂空透明立体字（用户要的质感）
@@ -114,14 +116,15 @@ class DaysPoster extends StatelessWidget {
                               size: 17,
                               color: style.accent,
                               tracking: 4,
-                              depth: 1.6,
-                              strokeWidth: 1.1,
+                              strokeWidth: 1.3,
                             ),
                           ),
                           const SizedBox(height: 13),
                           // ② 装饰线：那点仪式感
                           _Ornament(color: style.accent),
-                          const SizedBox(height: 22),
+                          // 品牌下面留一段再放卡片 —— 卡片大约落在屏幕 40% 处
+                          // （用户："把那个框框稍微调上一点点"）
+                          const SizedBox(height: 40),
                           // ③ 日历纸（名字写在它的标题条上）
                           _CalendarPage(
                             style: style,
