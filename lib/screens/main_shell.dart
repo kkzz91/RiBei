@@ -9,9 +9,8 @@ import '../theme/app_theme.dart';
 import '../utils/haptics.dart';
 import '../widgets/data_health_banner.dart';
 import 'birthday_screen.dart';
-import 'countdown_screen.dart';
+import 'days_screen.dart';
 import 'ledger_screen.dart';
-import 'milestone_screen.dart';
 import 'stats_screen.dart';
 import 'todo_screen.dart';
 
@@ -102,6 +101,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final todoProvider = context.watch<TodoProvider>();
     final alertCount = todoProvider.overdueCount + todoProvider.todayCount;
+    final urgent = context.watch<CountdownProvider>().urgentCount;
 
     return Scaffold(
       // 数据读不出来时，用悬浮在顶部的方式提示。
@@ -113,10 +113,10 @@ class _MainShellState extends State<MainShell> {
             index: _index,
             children: const [
               LedgerScreen(),
-              CountdownScreen(),
+              // 倒计时 + 纪念日已经合并成一个「日子」板块（v1.6.5）
+              DaysScreen(),
               TodoScreen(),
               StatsScreen(),
-              MilestoneScreen(),
             ],
           ),
           const Positioned(
@@ -139,10 +139,22 @@ class _MainShellState extends State<MainShell> {
             selectedIcon: Icon(Icons.receipt_long),
             label: '账本',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.hourglass_empty),
-            selectedIcon: Icon(Icons.hourglass_bottom),
-            label: '倒计时',
+          NavigationDestination(
+            icon: urgent > 0
+                ? Badge(
+                    label: Text('$urgent'),
+                    backgroundColor: context.palette.danger,
+                    child: const Icon(Icons.event_note_outlined),
+                  )
+                : const Icon(Icons.event_note_outlined),
+            selectedIcon: urgent > 0
+                ? Badge(
+                    label: Text('$urgent'),
+                    backgroundColor: context.palette.danger,
+                    child: const Icon(Icons.event_note),
+                  )
+                : const Icon(Icons.event_note),
+            label: '日子',
           ),
           NavigationDestination(
             icon: alertCount > 0
@@ -165,11 +177,6 @@ class _MainShellState extends State<MainShell> {
             icon: Icon(Icons.insights_outlined),
             selectedIcon: Icon(Icons.insights),
             label: '统计',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.favorite_outline),
-            selectedIcon: Icon(Icons.favorite),
-            label: '纪念日',
           ),
         ],
       ),

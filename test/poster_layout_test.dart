@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:ribei/providers/countdown_provider.dart';
 import 'package:ribei/providers/milestone_provider.dart';
 import 'package:ribei/screens/countdown_detail_screen.dart';
+import 'package:ribei/screens/days_screen.dart';
 import 'package:ribei/screens/milestone_detail_screen.dart';
 
 /// 回归：**海报详情页必须能拿到"有界"的约束。**
@@ -47,6 +48,27 @@ void main() {
         ChangeNotifierProvider<CountdownProvider>(
           create: (_) => CountdownProvider(),
           child: const MaterialApp(home: CountdownDetailScreen(countdownId: 1)),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('合并后的「日子」列表渲染不报错（$tag）', (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(size);
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<CountdownProvider>(
+              create: (_) => CountdownProvider(),
+            ),
+            ChangeNotifierProvider<MilestoneProvider>(
+              create: (_) => MilestoneProvider(),
+            ),
+          ],
+          child: const MaterialApp(home: DaysScreen()),
         ),
       );
       await tester.pump(const Duration(milliseconds: 50));

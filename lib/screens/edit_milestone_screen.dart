@@ -4,9 +4,11 @@ import 'package:provider/provider.dart';
 import '../models/milestone.dart';
 import '../providers/milestone_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/digit_fonts.dart';
 import '../utils/formatters.dart';
 import '../utils/haptics.dart';
 import '../widgets/app_toast.dart';
+import '../widgets/digit_font_picker.dart';
 import '../widgets/pressable.dart';
 import '../widgets/theme_picker.dart';
 
@@ -25,6 +27,12 @@ class _EditMilestoneScreenState extends State<EditMilestoneScreen> {
   late final TextEditingController _note;
   late DateTime _start;
   late int _theme;
+
+  /// 那个超大天数用什么字体（见 `DigitFont`）
+  late int _digitFont;
+
+  /// 在「日子」列表里置顶放大（全局最多一个）
+  late bool _pinned;
   bool _saving = false;
 
   bool get _isEditing => widget.existing != null;
@@ -37,6 +45,8 @@ class _EditMilestoneScreenState extends State<EditMilestoneScreen> {
     _note = TextEditingController(text: e?.note ?? '');
     _start = e?.startDate ?? DateTime.now();
     _theme = e?.theme ?? MilestoneTheme.blackGold;
+    _digitFont = e?.digitFont ?? DigitFont.classic;
+    _pinned = e?.pinned ?? false;
   }
 
   @override
@@ -78,6 +88,8 @@ class _EditMilestoneScreenState extends State<EditMilestoneScreen> {
       startDate: _start,
       note: _note.text.trim(),
       theme: _theme,
+      digitFont: _digitFont,
+      pinned: _pinned,
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
     );
     await context.read<MilestoneProvider>().save(milestone);
@@ -183,6 +195,43 @@ class _EditMilestoneScreenState extends State<EditMilestoneScreen> {
             Haptics.tap();
             setState(() => _theme = v);
           }),
+          const SizedBox(height: 22),
+          Text('数字字体', style: AppText.sectionTitle(context)),
+          const SizedBox(height: 10),
+          DigitFontPicker(
+            value: _digitFont,
+            onChanged: (v) {
+              Haptics.tap();
+              setState(() => _digitFont = v);
+            },
+          ),
+          const SizedBox(height: 22),
+          Container(
+            decoration: BoxDecoration(
+              color: p.card,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: p.line),
+            ),
+            child: SwitchListTile(
+              value: _pinned,
+              onChanged: (v) {
+                Haptics.tap();
+                setState(() => _pinned = v);
+              },
+              contentPadding: const EdgeInsets.fromLTRB(16, 4, 10, 4),
+              title: const Text(
+                '置顶',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  '在「日子」列表里放大显示在最上面（同一时刻只置顶一个）',
+                  style: AppText.label(context).copyWith(fontSize: 12),
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 26),
           Pressable(
             child: FilledButton(

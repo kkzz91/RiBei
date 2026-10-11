@@ -1,3 +1,4 @@
+import '../theme/digit_fonts.dart';
 import '../utils/lunar_date.dart';
 
 /// 用公历还是农历记这个日子
@@ -76,6 +77,8 @@ class CountdownEvent {
     this.repeat = CountdownRepeat.none,
     this.leadDays = 3,
     this.theme = 0,
+    this.pinned = false,
+    this.digitFont = DigitFont.classic,
     required this.createdAt,
   });
 
@@ -108,6 +111,12 @@ class CountdownEvent {
   /// **取值和纪念日共用同一套** —— 就是 `MilestoneTheme` 里那串常量，
   /// 也就是 `milestoneThemeStyles` 的下标；存进库的值同样**只许往后加**。
   final int theme;
+
+  /// 在列表里置顶显示（同一时刻顶多置顶一个）
+  final bool pinned;
+
+  /// 那个超大天数用什么字体（见 [DigitFont]）
+  final int digitFont;
 
   final DateTime createdAt;
 
@@ -257,6 +266,8 @@ class CountdownEvent {
     int? repeat,
     int? leadDays,
     int? theme,
+    bool? pinned,
+    int? digitFont,
     DateTime? createdAt,
   }) {
     return CountdownEvent(
@@ -273,6 +284,8 @@ class CountdownEvent {
       repeat: repeat ?? this.repeat,
       leadDays: leadDays ?? this.leadDays,
       theme: theme ?? this.theme,
+      pinned: pinned ?? this.pinned,
+      digitFont: digitFont ?? this.digitFont,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -291,6 +304,8 @@ class CountdownEvent {
     'repeat_rule': repeat,
     'lead_days': leadDays,
     'theme': theme,
+    'pinned': pinned ? 1 : 0,
+    'digit_font': digitFont,
     'created_at': createdAt.millisecondsSinceEpoch,
   };
 
@@ -308,6 +323,8 @@ class CountdownEvent {
     repeat: m['repeat_rule'] as int? ?? CountdownRepeat.none,
     leadDays: m['lead_days'] as int? ?? 3,
     theme: m['theme'] as int? ?? 0,
+    pinned: (m['pinned'] as int? ?? 0) == 1,
+    digitFont: m['digit_font'] as int? ?? DigitFont.classic,
     createdAt: DateTime.fromMillisecondsSinceEpoch(m['created_at'] as int),
   );
 }

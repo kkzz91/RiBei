@@ -5,8 +5,10 @@ import '../models/countdown_event.dart';
 import '../providers/countdown_provider.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/digit_fonts.dart';
 import '../utils/formatters.dart';
 import '../utils/lunar_date.dart';
+import '../widgets/digit_font_picker.dart';
 import '../widgets/theme_picker.dart';
 
 class AddCountdownScreen extends StatefulWidget {
@@ -35,6 +37,12 @@ class _AddCountdownScreenState extends State<AddCountdownScreen> {
 
   /// 详情页海报的背景主题（取值见 `MilestoneTheme`，和纪念日共用同一套）
   late int _theme;
+
+  /// 那个超大天数用什么字体（见 `DigitFont`）
+  late int _digitFont;
+
+  /// 在「日子」列表里置顶放大（全局最多一个）
+  late bool _pinned;
   bool _saving = false;
 
   bool get _isEditing => widget.existing != null;
@@ -55,6 +63,8 @@ class _AddCountdownScreenState extends State<AddCountdownScreen> {
     _hour = e?.remindHour ?? 9;
     _minute = e?.remindMinute ?? 0;
     _theme = e?.theme ?? 0;
+    _digitFont = e?.digitFont ?? DigitFont.classic;
+    _pinned = e?.pinned ?? false;
 
     // 农历字段：老数据没有就从当前公历日期反推，给用户一个合理起点
     if (e != null && e.isLunar) {
@@ -88,6 +98,8 @@ class _AddCountdownScreenState extends State<AddCountdownScreen> {
     remindHour: _hour,
     remindMinute: _minute,
     theme: _theme,
+    digitFont: _digitFont,
+    pinned: _pinned,
     createdAt: widget.existing?.createdAt ?? DateTime.now(),
   );
 
@@ -253,6 +265,8 @@ class _AddCountdownScreenState extends State<AddCountdownScreen> {
       repeat: _repeat,
       leadDays: _leadDays,
       theme: _theme,
+      digitFont: _digitFont,
+      pinned: _pinned,
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
     );
 
@@ -301,9 +315,12 @@ class _AddCountdownScreenState extends State<AddCountdownScreen> {
               children: [
                 Text(
                   '${days.abs()}',
-                  style: AppText.dayHero(
-                    context,
-                  ).copyWith(fontSize: 54, color: color),
+                  style: AppText.dayHero(context).copyWith(
+                    fontSize: 54,
+                    color: color,
+                    // 预览也跟着选的字体走，所见即所得
+                    fontFamily: DigitFont.familyOf(_digitFont),
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -484,6 +501,38 @@ class _AddCountdownScreenState extends State<AddCountdownScreen> {
           ThemePicker(value: _theme, onChanged: (v) {
             setState(() => _theme = v);
           }),
+          const SizedBox(height: 18),
+
+          const _FieldLabel('数字字体'),
+          DigitFontPicker(
+            value: _digitFont,
+            onChanged: (v) => setState(() => _digitFont = v),
+          ),
+          const SizedBox(height: 18),
+
+          Container(
+            decoration: BoxDecoration(
+              color: p.card,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: p.line),
+            ),
+            child: SwitchListTile(
+              value: _pinned,
+              onChanged: (v) => setState(() => _pinned = v),
+              contentPadding: const EdgeInsets.fromLTRB(16, 4, 10, 4),
+              title: const Text(
+                '置顶',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  '在「日子」列表里放大显示在最上面（同一时刻只置顶一个）',
+                  style: AppText.label(context).copyWith(fontSize: 12),
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 18),
 
           const _FieldLabel('备注'),

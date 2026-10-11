@@ -30,7 +30,7 @@ class MilestoneCard extends StatelessWidget {
       breakdown: future ? '还没到起始日' : elapsed.yearMonthDay,
       dateLabel: future ? '目标日' : '起始日',
       date: milestone.startDate,
-      footer: '日贝 · 纪念',
+      digitFont: milestone.digitFont,
       actions: actions,
     );
   }

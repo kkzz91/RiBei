@@ -1,3 +1,5 @@
+import '../theme/digit_fonts.dart';
+
 /// 纪念日的背景主题
 ///
 /// ⚠️ **这些常量的数值就是存进数据库 `milestones.theme` 的值，也是
@@ -156,6 +158,8 @@ class Milestone {
     required this.startDate,
     this.note = '',
     this.theme = MilestoneTheme.blackGold,
+    this.pinned = false,
+    this.digitFont = DigitFont.classic,
     required this.createdAt,
   });
 
@@ -167,6 +171,13 @@ class Milestone {
 
   final String note;
   final int theme;
+
+  /// 在列表里置顶显示（同一时刻顶多置顶一个）
+  final bool pinned;
+
+  /// 那个超大天数用什么字体（见 [DigitFont]）
+  final int digitFont;
+
   final DateTime createdAt;
 
   /// 从起始日到现在的实时拆解
@@ -182,6 +193,8 @@ class Milestone {
     DateTime? startDate,
     String? note,
     int? theme,
+    bool? pinned,
+    int? digitFont,
     DateTime? createdAt,
   }) {
     return Milestone(
@@ -190,6 +203,8 @@ class Milestone {
       startDate: startDate ?? this.startDate,
       note: note ?? this.note,
       theme: theme ?? this.theme,
+      pinned: pinned ?? this.pinned,
+      digitFont: digitFont ?? this.digitFont,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -200,6 +215,8 @@ class Milestone {
     'start_date': startDate.millisecondsSinceEpoch,
     'note': note,
     'theme': theme,
+    'pinned': pinned ? 1 : 0,
+    'digit_font': digitFont,
     'created_at': createdAt.millisecondsSinceEpoch,
   };
 
@@ -209,6 +226,8 @@ class Milestone {
     startDate: DateTime.fromMillisecondsSinceEpoch(m['start_date'] as int),
     note: (m['note'] as String?) ?? '',
     theme: m['theme'] as int? ?? MilestoneTheme.blackGold,
+    pinned: (m['pinned'] as int? ?? 0) == 1,
+    digitFont: m['digit_font'] as int? ?? DigitFont.classic,
     createdAt: DateTime.fromMillisecondsSinceEpoch(m['created_at'] as int),
   );
 }

@@ -44,7 +44,7 @@ class CountdownPoster extends StatelessWidget {
       breakdown: days == 0 ? '今天就是这一天' : span.yearMonthDay,
       dateLabel: '目标日',
       date: target,
-      footer: '日贝 · 倒计时',
+      digitFont: event.digitFont,
       actions: actions,
     );
   }

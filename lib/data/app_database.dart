@@ -68,13 +68,14 @@ class AppDatabase {
   /// v4: 账目增加 支付方式
   /// v5: 新增 milestones（纪念日/正计时）
   /// v6: 倒计时增加 背景主题（和纪念日共用同一套主题）
+  /// v7: 倒计时和纪念日各增加 置顶(pinned) / 数字字体(digit_font)
   ///
   /// v1.5.3 重写了迁移逻辑（对账式自愈），v1.5.x 没改结构。
   /// v1.6.0 加了 milestones 表 —— 因为 _createAll 全程 IF NOT EXISTS，
   /// 老库升级时会**自动补建这张表**，不需要任何 ALTER。
-  /// v6 是"加列"，所以必须同时改两处：建表语句 + [_countdownAddedColumns]
+  /// v6 / v7 都是"加列"，所以必须同时改两处：建表语句 + 对应的列定义表
   /// （只改一处的话，全新安装没事、老库升上来会缺这一列 —— 有脚本守着）。
-  static const _dbVersion = 6;
+  static const _dbVersion = 7;
 
   /// 备份文件名前缀（纯 ASCII：避免任何编码问题）
   static const _backupPrefix = 'ribei.backup';
@@ -208,6 +209,7 @@ class AppDatabase {
     // 但这里**不按版本分别处理** —— 一律"对照目标结构缺什么补什么"，
     // 所以它们合在一张表里，跑一次就补齐（幂等，见类顶部的四条保证）。
     await _addMissingColumns(db, 'countdown_events', _countdownAddedColumns);
+    await _addMissingColumns(db, 'milestones', _milestoneAddedColumns);
     await _addMissingColumns(db, 'todos', _todoV3Columns);
     await _addMissingColumns(db, 'transactions', _transactionV4Columns);
   }
@@ -245,6 +247,8 @@ class AppDatabase {
         repeat_rule INTEGER NOT NULL DEFAULT 0,
         lead_days INTEGER NOT NULL DEFAULT 3,
         theme INTEGER NOT NULL DEFAULT 0,
+        pinned INTEGER NOT NULL DEFAULT 0,
+        digit_font INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL
       )
     ''');
@@ -278,6 +282,8 @@ class AppDatabase {
         start_date INTEGER NOT NULL,
         note TEXT NOT NULL DEFAULT '',
         theme INTEGER NOT NULL DEFAULT 0,
+        pinned INTEGER NOT NULL DEFAULT 0,
+        digit_font INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL
       )
     ''');
@@ -319,6 +325,14 @@ class AppDatabase {
     'repeat_rule': 'INTEGER NOT NULL DEFAULT 0',
     'lead_days': 'INTEGER NOT NULL DEFAULT 3',
     'theme': 'INTEGER NOT NULL DEFAULT 0',
+    'pinned': 'INTEGER NOT NULL DEFAULT 0',
+    'digit_font': 'INTEGER NOT NULL DEFAULT 0',
+  };
+
+  // 纪念日表"后加的列"：v7 的置顶 / 数字字体（v5 建表时还没有）。
+  static const _milestoneAddedColumns = <String, String>{
+    'pinned': 'INTEGER NOT NULL DEFAULT 0',
+    'digit_font': 'INTEGER NOT NULL DEFAULT 0',
   };
 
   // v3：待办的优先级 / 重复 / 宽限

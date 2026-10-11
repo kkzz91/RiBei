@@ -216,25 +216,49 @@ class _PosterScreenState extends State<PosterScreen> {
     );
   }
 
-  /// 左上角那个**指示箭头**（用户要求：不要"返回"两个字，就要一个箭头）。
+  /// 左上角：**箭头 + 「返回」**（用户对着参考图提的：光一个箭头太光秃，
+  /// 参考图那颗药丸是"箭头 + 返回"两个字）。
   Widget _backButton(BuildContext context, MilestoneThemeStyle style) {
     return Positioned(
-      left: 4,
+      left: 8,
       top: 0,
       child: SafeArea(
-        child: Pressable(
-          child: Material(
-            color: Colors.black.withValues(alpha: style.isDark ? 0.24 : 0.14),
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: () => Navigator.of(context).pop(),
-              child: Padding(
-                padding: const EdgeInsets.all(11),
-                child: Icon(
-                  Icons.arrow_back_ios_new,
-                  size: 18,
-                  color: style.text,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Pressable(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: style.isDark ? 0.26 : 0.16),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(11, 8, 13, 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.arrow_back_ios_new,
+                          size: 12,
+                          color: style.text,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '返回',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: style.text,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
