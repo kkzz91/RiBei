@@ -11,6 +11,7 @@ import '../theme/digit_fonts.dart';
 import '../utils/formatters.dart';
 import '../utils/haptics.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/hollow_text.dart';
 import '../widgets/pressable.dart';
 import '../widgets/reminder_status_banner.dart';
 import 'add_countdown_screen.dart';
@@ -44,9 +45,20 @@ class DaysScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'RiBei Day',
-          style: TextStyle(letterSpacing: 1.5, fontWeight: FontWeight.w800),
+        // 镂空透明立体字（用户要的质感）
+        title: SizedBox(
+          height: 34,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: HollowText(
+              'RiBei Day',
+              size: 21,
+              color: context.palette.jade,
+              tracking: 1.2,
+              depth: 1.6,
+              strokeWidth: 1,
+            ),
+          ),
         ),
         actions: [
           IconButton(
@@ -66,23 +78,31 @@ class DaysScreen extends StatelessWidget {
               hint: '把「期末考试」「在一起」这些日子记下来，\n它会帮你数着还有多久、或者已经过去多久。',
             )
           : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
               children: [
                 const ReminderStatusBanner(),
                 if (featured != null) ...[
+                  const _Banner('最要紧的那天'),
                   _HeadlineCard(
                     row: featured,
                     onTap: () => _openDetail(context, featured),
                     onLongPress: () => _rowActions(context, featured),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 20),
                 ],
-                for (final r in rest)
-                  _DayTile(
-                    row: r,
-                    onTap: () => _openDetail(context, r),
-                    onLongPress: () => _rowActions(context, r),
+                if (rest.isNotEmpty) ...[
+                  _Banner('全部日子', trailing: '共 ${rows.length} 条'),
+                  _Notepad(
+                    children: <Widget>[
+                      for (final r in rest)
+                        _DayTile(
+                          row: r,
+                          onTap: () => _openDetail(context, r),
+                          onLongPress: () => _rowActions(context, r),
+                        ),
+                    ],
                   ),
+                ],
               ],
             ),
     );
@@ -282,8 +302,9 @@ class DaysScreen extends StatelessWidget {
 
 /// 数字徽标的配色：**还没到 = 蓝、已经过去 = 橙**（和参考图一个语义）。
 /// 做成实色 + 白字，所以在深浅两种 App 主题下都读得清。
+/// 用户反馈"区分不够清晰"，所以取的都是**饱和度更高**的一档。
 Color _badgeColor(bool past) =>
-    past ? const Color(0xFFC8821F) : const Color(0xFF3E7CB8);
+    past ? const Color(0xFFE08A1E) : const Color(0xFF2E7DD1);
 
 // ---------------------------------------------------------------- 头条卡
 
@@ -310,16 +331,16 @@ class _HeadlineCard extends StatelessWidget {
         onTap: onTap,
         onLongPress: onLongPress,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
+          padding: const EdgeInsets.fromLTRB(18, 18, 16, 18),
           decoration: BoxDecoration(
             color: p.card,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(color: p.line),
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: Colors.black.withValues(alpha: p.isDark ? 0.30 : 0.07),
-                blurRadius: 14,
-                offset: const Offset(0, 5),
+                color: Colors.black.withValues(alpha: p.isDark ? 0.32 : 0.08),
+                blurRadius: 18,
+                offset: const Offset(0, 7),
               ),
             ],
           ),
@@ -341,59 +362,47 @@ class _HeadlineCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 17,
+                              fontSize: 18,
                               fontWeight: FontWeight.w700,
                               color: p.ink,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
+                        // 「还有 / 已经」和名字一样大（用户明确要求别缩小）
                         Text(
                           row.past ? '已经' : '还有',
                           style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
                             color: p.inkSoft,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: 9),
                     Text(
                       '${row.past ? '起始日' : '目标日'}：'
                       '${isoDateWithWeekday(row.date)}',
-                      style: TextStyle(fontSize: 12.5, color: p.inkSoft),
+                      style: TextStyle(fontSize: 13, color: p.inkSoft),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    '${row.days}',
-                    style: TextStyle(
-                      fontFamily: DigitFont.familyOf(row.digitFont),
-                      fontSize: 46,
-                      height: 1,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -1.5,
-                      color: color,
-                    ),
+              const SizedBox(width: 14),
+              // 数字**不再带那个小"天"**（用户要求删掉），就一个大数
+              Text(
+                '${row.days}',
+                style: DigitFont.apply(
+                  TextStyle(
+                    fontSize: 58,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -2,
+                    color: color,
                   ),
-                  const SizedBox(width: 3),
-                  Text(
-                    '天',
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1,
-                      fontWeight: FontWeight.w600,
-                      color: color.withValues(alpha: 0.85),
-                    ),
-                  ),
-                ],
+                  row.digitFont,
+                ),
               ),
             ],
           ),
@@ -406,7 +415,8 @@ class _HeadlineCard extends StatelessWidget {
 // ---------------------------------------------------------------- 紧凑行
 
 /// 普通的一条：名字 + 还有/已经 在左，彩色数字徽标在右。
-/// **刻意做得很矮**（约 54dp）—— 用户反馈"每一条都很大，一次性看不完"。
+/// **刻意做得很矮**（上下各 7dp）—— 用户反馈"每一条都很大，一次性看不完"；
+/// 字反而**比上一版大**（16dp），就是"字调大、格子缩矮"。
 class _DayTile extends StatelessWidget {
   const _DayTile({
     required this.row,
@@ -423,59 +433,59 @@ class _DayTile extends StatelessWidget {
     final p = context.palette;
     final color = _badgeColor(row.past);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: GestureDetector(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
-          decoration: BoxDecoration(
-            color: p.card,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: p.line),
-          ),
-          child: Row(
-            children: [
-              if (row.pinned) ...[
-                Icon(Icons.push_pin, size: 13, color: color),
-                const SizedBox(width: 5),
-              ],
-              Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        row.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w600,
-                          color: p.ink,
-                        ),
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 7, 12, 7),
+        child: Row(
+          children: [
+            if (row.pinned) ...[
+              Icon(Icons.push_pin, size: 14, color: color),
+              const SizedBox(width: 5),
+            ],
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      row.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: p.ink,
                       ),
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      row.past ? '已经' : '还有',
-                      style: TextStyle(fontSize: 12.5, color: p.inkSoft),
+                  ),
+                  const SizedBox(width: 7),
+                  // 「还有 / 已经」**不缩小**，和名字一样大（用户明确要求）
+                  Text(
+                    row.past ? '已经' : '还有',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: p.inkSoft,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              _Badge(days: row.days, color: color, digitFont: row.digitFont),
-            ],
-          ),
+            ),
+            const SizedBox(width: 10),
+            _Badge(days: row.days, color: color, digitFont: row.digitFont),
+          ],
         ),
       ),
     );
   }
 }
 
-/// 彩色数字徽标：〔126 天〕
+/// 彩色数字徽标：〔126 │ 天〕
+///
+/// **数字和"天"是隔开的**（中间一道细白线）—— 用户对着参考图提的，
+/// 说这样"看起来更好看"。
 class _Badge extends StatelessWidget {
   const _Badge({
     required this.days,
@@ -489,48 +499,157 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final divider = Container(
+      width: 1,
+      height: 15,
+      color: Colors.white.withValues(alpha: 0.45),
+    );
+
     return Container(
-      constraints: const BoxConstraints(minWidth: 62),
-      height: 32,
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      height: 30,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
           children: [
-            Text(
-              '$days',
-              maxLines: 1,
-              style: TextStyle(
-                fontFamily: DigitFont.familyOf(digitFont),
-                fontSize: 18,
-                height: 1,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-                color: Colors.white,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 8, 0),
+              child: Text(
+                '$days',
+                maxLines: 1,
+                style: DigitFont.apply(
+                  const TextStyle(
+                    fontSize: 18,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    color: Colors.white,
+                  ),
+                  digitFont,
+                ),
               ),
             ),
-            const SizedBox(width: 2),
-            const Text(
-              '天',
-              maxLines: 1,
-              style: TextStyle(
-                fontSize: 10.5,
-                height: 1,
-                fontWeight: FontWeight.w600,
-                color: Colors.white70,
+            divider,
+            const Padding(
+              padding: EdgeInsets.fromLTRB(8, 0, 10, 0),
+              child: Text(
+                '天',
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 每个模块上面那条"**横帘**"：整宽的一条淡色带 + 一个竖色条 + 标题。
+/// 用户说加了它"看起来更清晰" —— 它把模块之间的边界画出来了。
+class _Banner extends StatelessWidget {
+  const _Banner(this.text, {this.trailing});
+
+  final String text;
+  final String? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: p.jadeSoft,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Container(width: 3, height: 14, color: p.jade),
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: p.jade,
+              ),
+            ),
+            const Spacer(),
+            if (trailing != null)
+              Text(
+                trailing!,
+                style: AppText.label(context).copyWith(fontSize: 11.5),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 把紧凑行装进**一张纸**里（行与行之间只留一条发丝线），
+/// 底下再垫一张错开的"下一页" —— 看着像一叠日历 / 便签本
+/// （用户要的"格子下面有点小重叠，看起来像日历"）。
+class _Notepad extends StatelessWidget {
+  const _Notepad({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    const radius = 18.0;
+    return Stack(
+      children: [
+        // 后面那张"下一页"：只在底下露出一点点
+        Positioned(
+          left: 12,
+          right: 12,
+          bottom: -7,
+          height: 26,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: p.line,
+              borderRadius: BorderRadius.circular(radius),
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: p.card,
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: p.line),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: p.isDark ? 0.30 : 0.06),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0)
+                  Divider(height: 1, indent: 14, endIndent: 14, color: p.line),
+                children[i],
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

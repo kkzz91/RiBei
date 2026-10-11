@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../theme/digit_fonts.dart';
 import '../theme/milestone_themes.dart';
 import '../utils/formatters.dart';
+import 'hollow_text.dart';
 import 'milestone_pattern.dart';
 
 /// "还有 / 已经 N 天"那张海报。**纪念日和倒计时共用这一个组件**。
@@ -102,26 +103,19 @@ class DaysPoster extends StatelessWidget {
                       padding: EdgeInsets.fromLTRB(20, topInset + 14, 20, 30),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
-                        // 内容偏上排布（用户反馈原来"偏下"）—— 上半屏是海报的黄金位置
-                        mainAxisAlignment: MainAxisAlignment.start,
+                        // 整块内容**在视口里居中**（用户来回调过两次：偏下 → 偏上 → 居中）
+                        mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // ① 品牌
-                          Text(
-                            footer,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 5,
-                              color: style.accent.withValues(alpha: 0.92),
-                              shadows: <Shadow>[
-                                Shadow(
-                                  color: Colors.black.withValues(alpha: 0.32),
-                                  offset: const Offset(0, 1),
-                                  blurRadius: 4,
-                                ),
-                              ],
+                          // ① 品牌：镂空透明立体字（用户要的质感）
+                          Center(
+                            child: HollowText(
+                              footer,
+                              size: 17,
+                              color: style.accent,
+                              tracking: 4,
+                              depth: 1.6,
+                              strokeWidth: 1.1,
                             ),
                           ),
                           const SizedBox(height: 13),
@@ -394,21 +388,22 @@ class _CalendarPage extends StatelessWidget {
                     child: Text(
                       '$days',
                       maxLines: 1,
-                      style: TextStyle(
-                        // 字体风格可选（见 DigitFont）：null = 跟随系统
-                        fontFamily: DigitFont.familyOf(digitFont),
-                        fontSize: 150,
-                        height: 1.0,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -5,
-                        color: MilestoneThemeStyle.paperInk,
-                        shadows: const <Shadow>[
-                          Shadow(
-                            color: Color(0x1F000000),
-                            offset: Offset(0, 3),
-                            blurRadius: 4,
-                          ),
-                        ],
+                      style: DigitFont.apply(
+                        const TextStyle(
+                          fontSize: 150,
+                          height: 1.0,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -5,
+                          color: MilestoneThemeStyle.paperInk,
+                          shadows: <Shadow>[
+                            Shadow(
+                              color: Color(0x1F000000),
+                              offset: Offset(0, 3),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        digitFont,
                       ),
                     ),
                   ),

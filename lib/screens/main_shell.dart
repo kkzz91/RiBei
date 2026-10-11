@@ -154,7 +154,7 @@ class _MainShellState extends State<MainShell> {
                     child: const Icon(Icons.event_note),
                   )
                 : const Icon(Icons.event_note),
-            label: '日子',
+            label: '倒计时',
           ),
           NavigationDestination(
             icon: alertCount > 0

@@ -315,11 +315,10 @@ class _AddCountdownScreenState extends State<AddCountdownScreen> {
               children: [
                 Text(
                   '${days.abs()}',
-                  style: AppText.dayHero(context).copyWith(
-                    fontSize: 54,
-                    color: color,
+                  style: DigitFont.apply(
+                    AppText.dayHero(context).copyWith(fontSize: 54, color: color),
                     // 预览也跟着选的字体走，所见即所得
-                    fontFamily: DigitFont.familyOf(_digitFont),
+                    _digitFont,
                   ),
                 ),
                 const SizedBox(height: 2),

@@ -46,13 +46,15 @@ class DigitFontPicker extends StatelessWidget {
                   Text(
                     '126',
                     maxLines: 1,
-                    style: TextStyle(
-                      fontFamily: DigitFont.familyOf(font),
-                      fontSize: 20,
-                      height: 1,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      color: p.ink,
+                    style: DigitFont.apply(
+                      TextStyle(
+                        fontSize: 20,
+                        height: 1,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: p.ink,
+                      ),
+                      font,
                     ),
                   ),
                   const SizedBox(height: 6),
