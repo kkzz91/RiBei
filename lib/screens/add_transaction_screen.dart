@@ -517,7 +517,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
             ),
           ),
-          Container(
+          // 备注拿到焦点时**整块底部栏都收起来** ——
+          // 金额、支付方式、常用、自带键盘、保存按钮全部让位，
+          // 这样打字框上面干干净净（用户反馈"打字框上面压着一条保存栏，有点遮挡"）。
+          //
+          // ⚠️ 判据是 **备注有没有焦点**，不是"键盘弹没弹出来"：
+          // 键盘弹出来也可能是别的输入框触发的（比如系统键盘模式下的金额框），
+          // 那种情况下**金额和保存必须留着** —— test/layout_test.dart 钉着这条（红线 22）。
+          if (!_noteFocus.hasFocus)
+            Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
             decoration: BoxDecoration(
               color: context.palette.card,
@@ -533,12 +541,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      // 备注在输入时（keyboardOpen）**把金额显示收掉** ——
-                      // 用户反馈："用自带键盘打备注时，那个 0 元就压在打字栏上面，挡着写"。
-                      // 保存按钮留着（不然没法存），下面那排支付方式也一起收。
-                      child: keyboardOpen
-                          ? const SizedBox.shrink()
-                          : useSystemKeyboard
+                      // 金额**绝不能截断**：这是用户正在输入的数字，
+                      // 看不全就不知道自己记了多少。
+                      child: useSystemKeyboard
                           ? TextField(
                               controller: _amountController,
                               focusNode: _amountFocus,

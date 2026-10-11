@@ -10,7 +10,6 @@ import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../utils/haptics.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/hollow_text.dart';
 import '../widgets/pressable.dart';
 import '../widgets/reminder_status_banner.dart';
 import 'add_countdown_screen.dart';
@@ -44,20 +43,8 @@ class DaysScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        // 镂空透明立体字（用户要的质感）
-        title: SizedBox(
-          height: 34,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: HollowText(
-              'RiBei Day',
-              size: 21,
-              color: context.palette.jade,
-              tracking: 1.2,
-              strokeWidth: 1.2,
-            ),
-          ),
-        ),
+        // 用户要求：这一页顶栏就写「倒计时」，不要那个英文品牌
+        title: const Text('倒计时'),
         actions: [
           IconButton(
             tooltip: '新建',
@@ -76,7 +63,8 @@ class DaysScreen extends StatelessWidget {
               hint: '把「期末考试」「在一起」这些日子记下来，\n它会帮你数着还有多久、或者已经过去多久。',
             )
           : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+              // 顶栏是深色条，内容要留一点间距，不然"最要紧的那天"直接贴着顶栏很难看
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
               children: [
                 const ReminderStatusBanner(),
                 if (featured != null) ...[
@@ -433,16 +421,17 @@ class _DayTile extends StatelessWidget {
         onLongPress: onLongPress,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
+          padding: const EdgeInsets.fromLTRB(13, 11, 11, 11),
           decoration: BoxDecoration(
             color: p.card,
-            borderRadius: BorderRadius.circular(15),
+            // 用户要"有边有角的长方形"——所以圆角收得很小，不再走大圆角
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(color: p.line),
             boxShadow: <BoxShadow>[
               BoxShadow(
                 color: Colors.black.withValues(alpha: p.isDark ? 0.26 : 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -461,7 +450,7 @@ class _DayTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 17,
+                          fontSize: 18,
                           fontWeight: FontWeight.w600,
                           color: p.ink,
                         ),
@@ -472,7 +461,7 @@ class _DayTile extends StatelessWidget {
                     Text(
                       row.past ? '已经' : '还有',
                       style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: p.inkSoft,
                       ),

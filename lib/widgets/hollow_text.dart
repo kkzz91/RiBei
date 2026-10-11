@@ -52,7 +52,9 @@ class HollowText extends StatelessWidget {
                 ..color = Colors.black.withValues(alpha: 0.38),
             ),
           ),
-          // ② 亮色描边：字的主体（中间是透的）
+          // ② 亮色描边：字的主体。**中间完全是透的** ——
+          // ⚠️ 这里**刻意不再叠一层填充**：描边 + 填充叠在同一个字形上，
+          // 会看成"字里面又写了一遍"（用户原话"像字里面写重复了"）。
           Text(
             text,
             textAlign: TextAlign.center,
@@ -62,12 +64,6 @@ class HollowText extends StatelessWidget {
                 ..strokeWidth = strokeWidth
                 ..color = color,
             ),
-          ),
-          // ③ 极淡填充：只为了让笔画内部有一点体积，不能重
-          Text(
-            text,
-            textAlign: TextAlign.center,
-            style: base.copyWith(color: color.withValues(alpha: 0.22)),
           ),
         ],
       ),

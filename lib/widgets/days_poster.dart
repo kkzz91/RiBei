@@ -123,8 +123,9 @@ class DaysPoster extends StatelessWidget {
                           // ② 装饰线：那点仪式感
                           _Ornament(color: style.accent),
                           // 品牌下面留一段再放卡片 —— 卡片大约落在屏幕 40% 处
-                          // （用户："把那个框框稍微调上一点点"）
-                          const SizedBox(height: 40),
+                          // （用户："把那个框框稍微调上一点点"→ 现在又说"再往下挪一点点"，
+                          //   所以这里取一个中间值）
+                          const SizedBox(height: 52),
                           // ③ 日历纸（名字写在它的标题条上）
                           _CalendarPage(
                             style: style,
@@ -393,7 +394,8 @@ class _CalendarPage extends StatelessWidget {
                       maxLines: 1,
                       style: DigitFont.apply(
                         const TextStyle(
-                          fontSize: 150,
+                          // 卡片整体收小一点（用户："那个白色框再稍微缩小一点点"）
+                          fontSize: 138,
                           height: 1.0,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -5,

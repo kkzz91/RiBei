@@ -269,7 +269,10 @@ class _PosterScreenState extends State<PosterScreen> {
   }
 }
 
-/// 卡片下面那排**小**药丸（比导航栏的按钮小一圈）。
+/// 卡片下面那排**小**按钮。
+///
+/// ⚠️ 用户要求**不要圆角药丸**（"圆的没有感觉"），所以圆角只留 7，
+/// 做成有边有角的**长方形**，和列表那边一个观感。
 class _MiniPill extends StatelessWidget {
   const _MiniPill({
     required this.icon,
@@ -278,6 +281,8 @@ class _MiniPill extends StatelessWidget {
     required this.filled,
     required this.onTap,
   });
+
+  static const double _radius = 7;
 
   final IconData icon;
   final String label;
@@ -299,7 +304,7 @@ class _MiniPill extends StatelessWidget {
           color: filled
               ? style.accent
               : Colors.white.withValues(alpha: style.isDark ? 0.16 : 0.58),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(_radius),
           boxShadow: <BoxShadow>[
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.16),
@@ -310,9 +315,9 @@ class _MiniPill extends StatelessWidget {
         ),
         child: Material(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(_radius),
           child: InkWell(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(_radius),
             onTap: onTap,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),

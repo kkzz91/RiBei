@@ -142,7 +142,8 @@ class _LedgerScreenState extends State<LedgerScreen> {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 104),
+        // 顶栏是深色条了，内容要留一点间距，不然结余卡直接贴着顶栏很难看（用户反馈）
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 104),
         children: [
           _SummaryCard(
             month: _month,
