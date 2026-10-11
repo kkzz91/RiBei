@@ -16,30 +16,46 @@ class MilestonePatternPainter extends CustomPainter {
 
   final MilestoneThemeStyle style;
 
+  /// 画布尺寸的上限兜底（理由见 [paint]）。
+  static const double _maxExtent = 8192;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
+    // ⚠️ **安全兜底，别删。** 下面好几个图案是"按固定步长把画布铺满"的循环，
+    // 一旦画布是**无限大**，`for (x = 0; x < 无限; x += 步长)` 就永远转不完，
+    // 主线程死循环 → 整个 App 卡死。真发生过一次：
+    // 海报被套在 `SingleChildScrollView` 里 → 外层 `Stack` 拿到无界约束 →
+    // `size` 变成无限 → 卡死。而且 **debug 只是 `assert(size.isFinite)` 报错，
+    // release 断言被关掉，就变成静默死循环** —— 所以这里必须自己扛住。
+    // 把尺寸夹进一块有限区域：少画几笔无所谓，卡死不行。
+    final safe = Size(
+      size.width.isFinite ? math.min(size.width, _maxExtent) : _maxExtent,
+      size.height.isFinite ? math.min(size.height, _maxExtent) : _maxExtent,
+    );
+    if (safe.isEmpty) return;
+
     canvas.save();
-    canvas.clipRect(Offset.zero & size);
+    canvas.clipRect(Offset.zero & safe);
     switch (style.pattern) {
       case MilestonePattern.plain:
         break;
       case MilestonePattern.wood:
-        _wood(canvas, size);
+        _wood(canvas, safe);
       case MilestonePattern.hearts:
-        _hearts(canvas, size);
+        _hearts(canvas, safe);
       case MilestonePattern.stars:
-        _stars(canvas, size);
+        _stars(canvas, safe);
       case MilestonePattern.waves:
-        _waves(canvas, size);
+        _waves(canvas, safe);
       case MilestonePattern.dots:
-        _dots(canvas, size);
+        _dots(canvas, safe);
       case MilestonePattern.grid:
-        _grid(canvas, size);
+        _grid(canvas, safe);
       case MilestonePattern.diagonal:
-        _diagonal(canvas, size);
+        _diagonal(canvas, safe);
       case MilestonePattern.diamonds:
-        _diamonds(canvas, size);
+        _diamonds(canvas, safe);
     }
     canvas.restore();
   }
@@ -128,7 +144,7 @@ class MilestonePatternPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = w * 0.085
       ..color = style.patternInkSoft;
-    final stripeStep = w * 0.30;
+    final stripeStep = math.max(w * 0.30, 1.0);
     for (var x = -h; x < w + h; x += stripeStep) {
       canvas.drawLine(Offset(x, 0), Offset(x + h, h), stripe);
     }
@@ -136,8 +152,8 @@ class MilestonePatternPainter extends CustomPainter {
     // 爱心错行铺开
     final heart = Paint()..color = style.patternInk;
     final heartW = w * 0.070;
-    final dx = w * 0.30;
-    final dy = h * 0.105;
+    final dx = math.max(w * 0.30, 1.0);
+    final dy = math.max(h * 0.105, 1.0);
     var row = 0;
     for (var y = h * 0.045; y < h + dy; y += dy) {
       final shift = row.isOdd ? dx / 2 : 0.0;
@@ -227,7 +243,7 @@ class MilestonePatternPainter extends CustomPainter {
   void _waves(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    final step = h * 0.052;
+    final step = math.max(h * 0.052, 1.0);
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.3;
@@ -257,8 +273,8 @@ class MilestonePatternPainter extends CustomPainter {
     final h = size.height;
     final paint = Paint()..color = style.patternInk;
     final r = w * 0.031;
-    final dx = w * 0.20;
-    final dy = h * 0.085;
+    final dx = math.max(w * 0.20, 1.0);
+    final dy = math.max(h * 0.085, 1.0);
     var row = 0;
     for (var y = dy * 0.5; y < h + dy; y += dy) {
       final shift = row.isOdd ? dx / 2 : 0.0;
@@ -274,15 +290,16 @@ class MilestonePatternPainter extends CustomPainter {
   void _grid(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    final step = w * 0.062;
+    // 步长至少 1，而且上界用 `<` 不用 `<=`：宽度为 0 时 0 步长会原地打转
+    final step = math.max(w * 0.062, 1.0);
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
       ..color = style.patternInk;
-    for (var x = 0.0; x <= w; x += step) {
+    for (var x = 0.0; x < w; x += step) {
       canvas.drawLine(Offset(x, 0), Offset(x, h), paint);
     }
-    for (var y = 0.0; y <= h; y += step) {
+    for (var y = 0.0; y < h; y += step) {
       canvas.drawLine(Offset(0, y), Offset(w, y), paint);
     }
   }
@@ -292,7 +309,7 @@ class MilestonePatternPainter extends CustomPainter {
   void _diagonal(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    final step = w * 0.17;
+    final step = math.max(w * 0.17, 1.0);
     var i = 0;
     for (var x = -h; x < w + h; x += step) {
       canvas.drawLine(
@@ -312,7 +329,7 @@ class MilestonePatternPainter extends CustomPainter {
   void _diamonds(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    final step = w * 0.125;
+    final step = math.max(w * 0.125, 1.0);
     final strong = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1

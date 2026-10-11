@@ -437,6 +437,10 @@ class _PaperTexturePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // ⚠️ 安全兜底，别删：尺寸无穷时这里会永远转不完（真发生过一次，
+    // 见红线 28 ④ —— 海报被套进 SingleChildScrollView，Stack 尺寸变无限）。
+    if (!size.width.isFinite || !size.height.isFinite) return;
+
     final grid = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
