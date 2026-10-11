@@ -150,13 +150,12 @@ class _PosterScreenState extends State<PosterScreen> {
         builder: (context, constraints) {
           return Stack(
             children: [
-              // minHeight 撑满视口，图案才铺满整屏；
-              // 内容超出时会自然变高、可滚动。
-              SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: RepaintBoundary(key: _cardKey, child: widget.poster),
-                ),
+              // 海报**固定占满整屏**（这里给的是紧约束）。
+              // 必须是紧约束：海报内部靠"有界高度 + MainAxisAlignment.center"
+              // 把内容垂直居中，松约束下那个居中是**不生效**的（试过，内容全挤在顶上）。
+              // 内容万一比屏幕还高，由海报内部的滚动兜住，不会被裁掉。
+              Positioned.fill(
+                child: RepaintBoundary(key: _cardKey, child: widget.poster),
               ),
               _topBar(context, style),
               _bottomBar(context, style),

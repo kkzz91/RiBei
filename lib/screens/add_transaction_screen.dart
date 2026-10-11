@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/quick_entry.dart';
@@ -30,9 +33,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   late final TextEditingController _note;
   late final TextEditingController _amountController;
   late final FocusNode _noteFocus;
+  late final FocusNode _amountFocus;
   late int _payMethod;
   String _amount = '0';
   bool _saving = false;
+
+  /// 备注刚获得焦点后的一小段"让位窗口"（理由见 build 里 keyboardOpen 的注释）
+  bool _noteGrace = false;
+  Timer? _noteGraceTimer;
 
   /// 连记模式：保存后不关页，清空金额和备注接着记下一笔
   bool _batchMode = false;
@@ -49,6 +57,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     _date = e?.date ?? DateTime.now();
     _note = TextEditingController(text: e?.note ?? '');
     _noteFocus = FocusNode()..addListener(_onNoteFocus);
+    _amountFocus = FocusNode();
     // 编辑老账目时保留它原本的"未记录"（-1），不替它认一个微信；
     // 新建时用默认档。
     _payMethod = e?.payMethod ?? PayMethod.defaultMethod;
@@ -58,14 +67,43 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           : e.amount.toString();
     }
     _amountController = TextEditingController(text: _amount);
+    // 金额框的光标永远钉在末尾（理由见 _pinAmountCursor）
+    _amountController.addListener(_pinAmountCursor);
   }
 
   @override
   void dispose() {
+    _noteGraceTimer?.cancel();
     _amountController.dispose();
+    _amountFocus.dispose();
     _noteFocus.dispose();
     _note.dispose();
     super.dispose();
+  }
+
+  /// 把金额框的光标**强行拉回末尾**。
+  ///
+  /// 用户反馈：用系统键盘时，把光标点到 `0` 前面再打字，会在 `0` 前插进去
+  /// （本来是 `0`，点前面打 5 就变成 `50`，而他想的是 `5`）。
+  /// 金额是**一位一位敲进来**的，手感和 App 自带的数字键盘应该一致，
+  /// 所以这里不允许中间插入 —— 在任何位置打字都等于追加。
+  void _pinAmountCursor() {
+    final text = _amountController.text;
+    final sel = _amountController.selection;
+    if (sel.isCollapsed && sel.baseOffset == text.length) return;
+    _amountController.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+
+  /// 有些机型上"输入法被收起、但焦点还在"时，再点一次输入框**不会重新弹键盘**
+  /// （焦点没变，系统就不重新展示）。这里显式叫它 show 一次。
+  /// 不这么做的话，用户会遇到"点了输入框却打不了字"。
+  void _ensureKeyboard(FocusNode node) {
+    if (node.hasFocus) {
+      SystemChannels.textInput.invokeMethod<void>('TextInput.show');
+    }
   }
 
   /// 备注框的焦点一变就重画，并把备注滚进可见区域。
@@ -76,7 +114,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   /// 备注框被挤出屏幕，用户就在**看不见输入框的情况下盲打**。
   /// 所以下面 `keyboardOpen` 用的是"键盘高度 > 0 **或** 备注拿到了焦点"。
   void _onNoteFocus() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      if (_noteFocus.hasFocus) {
+        // 开一段"让位窗口"：焦点一到手就先把自带键盘收掉，免得机型晚报
+        // viewInsets 的那几帧里两套键盘同时在、上半区塌成 0。
+        // 但如果输入法压根没起来（用户刚把它按没了），窗口过后要把键盘还回来。
+        _noteGrace = true;
+        _noteGraceTimer?.cancel();
+        _noteGraceTimer = Timer(const Duration(milliseconds: 800), () {
+          if (mounted) setState(() => _noteGrace = false);
+        });
+      }
+      setState(() {});
+    }
     if (!_noteFocus.hasFocus) return;
     // 滚两次：第一次等本帧布局（自带键盘收起后上半区变高），
     // 第二次等输入法动画走完 —— 只滚一次会被随后变矮的视口又挤出去。
@@ -371,12 +421,17 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     // ② App 自带的数字键盘还留在屏幕上，另一套键盘也在，
     //    用户去点那排数字，改的却是**金额**（他反馈的"数字串入支出价"）。
     // 所以键盘一出来就把自带键盘收起（顺手把不相关的「常用」也收起来让位）。
-    // 注意后面那一条 `_noteFocus.hasFocus`：有些机型上报 viewInsets 会晚
-    // 一两帧、甚至一直报 0。只看键盘高度的话，那几帧里两套键盘会同时留在
-    // 屏幕上，老机型上半区还是被压成 0。焦点是立刻可得的信号，
-    // 不依赖机型上报的时机 —— 两条件取"或"，谁先到就听谁的。
+    // 两个条件取"或"：
+    // ① 输入法真的起来了 —— 最可靠，但它**靠机型上报**，有些 ROM 晚一两帧甚至一直报 0；
+    // ② 备注框刚拿到焦点后的 800ms"让位窗口" —— 补 ① 的时间差。
+    //
+    // ⚠️ 这里刻意**不写成"只要备注有焦点就一直收着自带键盘"**：
+    // 那样会出大问题 —— 用户把输入法按没了、焦点还留在备注上，自带键盘也不见了，
+    // 屏幕上**两套键盘都没有**，就是"键盘弹不出来、输入不了"（用户实测报过这一条）。
+    // 让位窗口一过就把键盘还回来，谁都不会卡住。
     final keyboardOpen =
-        MediaQuery.viewInsetsOf(context).bottom > 0 || _noteFocus.hasFocus;
+        MediaQuery.viewInsetsOf(context).bottom > 0 ||
+        (_noteGrace && _noteFocus.hasFocus);
 
     // 用户在设置里选了"用系统键盘输金额"时，收起自带数字键盘、改用输入框
     final useSystemKeyboard = context.watch<SettingsProvider>().useSystemKeyboard;
@@ -441,6 +496,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     controller: _note,
                     focusNode: _noteFocus,
                     textInputAction: TextInputAction.done,
+                    // 输入法被按没、焦点还在时，再点一次要能重新弹出来
+                    onTap: () => _ensureKeyboard(_noteFocus),
                     decoration: const InputDecoration(
                       hintText: '备注（可选）',
                       prefixIcon: Icon(Icons.edit_note, size: 20),
@@ -473,11 +530,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       child: useSystemKeyboard
                           ? TextField(
                               controller: _amountController,
+                              focusNode: _amountFocus,
                               keyboardType: const TextInputType.numberWithOptions(
                                 decimal: true,
                               ),
                               textAlign: TextAlign.right,
                               onChanged: _onSystemAmountChanged,
+                              // 同上：输入法被按没之后再点要能弹回来
+                              onTap: () => _ensureKeyboard(_amountFocus),
                               style: TextStyle(
                                 fontSize: 30,
                                 fontWeight: FontWeight.w800,
