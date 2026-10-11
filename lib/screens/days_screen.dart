@@ -68,24 +68,20 @@ class DaysScreen extends StatelessWidget {
               children: [
                 const ReminderStatusBanner(),
                 if (featured != null) ...[
-                  const _Banner('最要紧的那天'),
                   _HeadlineCard(
                     row: featured,
                     onTap: () => _openDetail(context, featured),
                     onLongPress: () => _rowActions(context, featured),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
                 ],
-                if (rest.isNotEmpty) ...[
-                  _Banner('全部日子', trailing: '共 ${rows.length} 条'),
-                  // **每一条独立成框**（用户要求：不要连成一整张纸）
-                  for (final r in rest)
-                    _DayTile(
-                      row: r,
-                      onTap: () => _openDetail(context, r),
-                      onLongPress: () => _rowActions(context, r),
-                    ),
-                ],
+                // 用户要求删掉那两条"横帘"说明，列表直接铺开
+                for (final r in rest)
+                  _DayTile(
+                    row: r,
+                    onTap: () => _openDetail(context, r),
+                    onLongPress: () => _rowActions(context, r),
+                  ),
               ],
             ),
     );
@@ -283,11 +279,14 @@ class DaysScreen extends StatelessWidget {
   }
 }
 
-/// 数字徽标的配色：**还没到 = 蓝、已经过去 = 橙**（和参考图一个语义）。
-/// 做成实色 + 白字，所以在深浅两种 App 主题下都读得清。
-/// 用户反馈"区分不够清晰"，所以取的都是**饱和度更高**的一档。
+/// 数字徽标的配色：**还没到 = 蓝、已经过去 = 橙**。
+/// [deep] 那一档更深，专门给"天"那个小格子用 —— 两段深浅不同看起来才有质感
+/// （用户对着参考图提的："人家那个单位那里颜色不一样，深蓝色和深橙色"）。
 Color _badgeColor(bool past) =>
     past ? const Color(0xFFE08A1E) : const Color(0xFF2E7DD1);
+
+Color _badgeDeep(bool past) =>
+    past ? const Color(0xFFB0650A) : const Color(0xFF1D5A9E);
 
 // ---------------------------------------------------------------- 头条卡
 
@@ -318,7 +317,8 @@ class _HeadlineCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: p.card,
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: p.line),
+            // 用户："人家把置顶那个框**全包围**" —— 用一条醒目的彩色边整圈框住
+            border: Border.all(color: color, width: 2),
             boxShadow: <BoxShadow>[
               BoxShadow(
                 color: Colors.black.withValues(alpha: p.isDark ? 0.32 : 0.08),
@@ -421,56 +421,54 @@ class _DayTile extends StatelessWidget {
         onLongPress: onLongPress,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(13, 11, 11, 11),
+          // 框**再小一点、更紧凑**（用户第二次说还是大）
+          height: 40,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: p.card,
-            // 用户要"有边有角的长方形"——所以圆角收得很小，不再走大圆角
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: p.line),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.black.withValues(alpha: p.isDark ? 0.26 : 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
           child: Row(
+            // 让右边的徽标**撑满整条行高**（用户："弄得跟框一样大、站在右边"）
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (row.pinned) ...[
-                Icon(Icons.push_pin, size: 15, color: color),
-                const SizedBox(width: 6),
-              ],
               Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        row.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: [
+                      if (row.pinned) ...[
+                        Icon(Icons.push_pin, size: 15, color: color),
+                        const SizedBox(width: 6),
+                      ],
+                      Flexible(
+                        child: Text(
+                          row.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: p.ink,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // 「还有 / 已经」和名字一样大（用户要求别缩小）
+                      Text(
+                        row.past ? '已经' : '还有',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: p.ink,
+                          color: p.inkSoft,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    // 「还有 / 已经」**和名字一样大**（用户明确要求别缩小）
-                    Text(
-                      row.past ? '已经' : '还有',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: p.inkSoft,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 10),
-              _Badge(days: row.days, color: color),
+              _Badge(days: row.days, past: row.past),
             ],
           ),
         ),
@@ -479,117 +477,56 @@ class _DayTile extends StatelessWidget {
   }
 }
 
-/// 彩色数字徽标。
-///
-/// ⚠️ **宽度固定**：用户反馈"个位数和三位数框的长度不一样，要统一" ——
-/// 数字在固定宽的槽里居中，位数变了框也不变。
-/// ⚠️ **不带那个小「天」**（用户要求删掉）—— 方向看左边的「还有 / 已经」就够了。
-/// ⚠️ **字体统一**（用户要求：列表页别跟着自选字体走，那样看着乱；
-///    自选的数字字体只在**点进去的详情页**生效）。
+/// 彩色数字徽标。**两段式**：数字一段、单位"天"一段，
+/// 单位那一段用**更深一档的同色**（用户："人家那个单位那里颜色不一样，
+/// 深蓝色和深橙色，这样看起来有质感"）。
+/// 它**撑满整条行高、贴在右边**（用户："弄得跟框一样大、站在右边"）。
 class _Badge extends StatelessWidget {
-  const _Badge({required this.days, required this.color});
+  const _Badge({required this.days, required this.past});
 
   final int days;
-  final Color color;
+  final bool past;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      // 固定宽度：位数变了框也不变（用户要求"要统一"）
-      width: 80,
-      height: 34,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  '$days',
-                  maxLines: 1,
-                  style: const TextStyle(
-                    fontSize: 19,
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                    color: Colors.white,
-                  ),
-                ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 56,
+          color: _badgeColor(past),
+          alignment: Alignment.center,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '$days',
+              maxLines: 1,
+              style: const TextStyle(
+                fontSize: 20,
+                height: 1,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+                color: Colors.white,
               ),
             ),
           ),
-          // 数字和"天"隔开（用户说这样好看）
-          Container(
-            width: 1,
-            height: 16,
-            color: Colors.white.withValues(alpha: 0.45),
-          ),
-          const SizedBox(
-            width: 24,
-            child: Center(
-              child: Text(
-                '天',
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  height: 1,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 每个模块上面那条"**横帘**"：整宽的一条淡色带 + 一个竖色条 + 标题。
-/// 用户说加了它"看起来更清晰" —— 它把模块之间的边界画出来了。
-class _Banner extends StatelessWidget {
-  const _Banner(this.text, {this.trailing});
-
-  final String text;
-  final String? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: p.jadeSoft,
-          borderRadius: BorderRadius.circular(10),
         ),
-        child: Row(
-          children: [
-            Container(width: 3, height: 14, color: p.jade),
-            const SizedBox(width: 8),
-            Text(
-              text,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: p.jade,
-              ),
+        Container(
+          width: 26,
+          color: _badgeDeep(past),
+          alignment: Alignment.center,
+          child: const Text(
+            '天',
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
             ),
-            const Spacer(),
-            if (trailing != null)
-              Text(
-                trailing!,
-                style: AppText.label(context).copyWith(fontSize: 11.5),
-              ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

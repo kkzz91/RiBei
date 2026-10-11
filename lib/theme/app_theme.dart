@@ -268,6 +268,14 @@ class AppTheme {
           bottom: BorderSide(color: Color(0x33000000), width: 1),
         ),
       ),
+      // 顶栏上那些按钮：给一层**半透明圆底**，看起来才像个"按键"（用户要求）。
+      // ⚠️ 只设底色，**不动前景色** —— 前景由 appBarTheme 给白色；
+      // 如果这里也把前景设成白，正文里那些 IconButton 就全废了。
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          backgroundColor: Colors.white.withValues(alpha: 0.16),
+        ),
+      ),
       cardTheme: CardThemeData(
         color: p.card,
         surfaceTintColor: Colors.transparent,

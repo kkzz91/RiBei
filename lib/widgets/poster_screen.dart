@@ -216,47 +216,35 @@ class _PosterScreenState extends State<PosterScreen> {
     );
   }
 
-  /// 左上角：**箭头 + 「返回」**（用户对着参考图提的：光一个箭头太光秃，
-  /// 参考图那颗药丸是"箭头 + 返回"两个字）。
+  /// 左上角：**就是一个返回箭头**（用户两次要求"改成箭头"，
+  /// 之前那颗「← 返回」药丸他嫌不好看，所以回到纯图标）。
   Widget _backButton(BuildContext context, MilestoneThemeStyle style) {
     return Positioned(
-      left: 8,
+      left: 6,
       top: 0,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.only(top: 6),
           child: Pressable(
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: style.isDark ? 0.26 : 0.16),
-                borderRadius: BorderRadius.circular(20),
+                color: Colors.black.withValues(
+                  alpha: style.isDark ? 0.28 : 0.16,
+                ),
+                borderRadius: BorderRadius.circular(26),
               ),
               child: Material(
                 color: Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(26),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
+                  customBorder: const CircleBorder(),
                   onTap: () => Navigator.of(context).pop(),
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(11, 8, 13, 8),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.arrow_back_ios_new,
-                          size: 12,
-                          color: style.text,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          '返回',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                            color: style.text,
-                          ),
-                        ),
-                      ],
+                    padding: const EdgeInsets.all(10),
+                    child: Icon(
+                      Icons.arrow_back_ios_new,
+                      size: 18,
+                      color: style.text,
                     ),
                   ),
                 ),

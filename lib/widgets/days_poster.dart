@@ -1,11 +1,8 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../theme/digit_fonts.dart';
 import '../theme/milestone_themes.dart';
 import '../utils/formatters.dart';
-import 'hollow_text.dart';
 import 'milestone_pattern.dart';
 
 /// "还有 / 已经 N 天"那张海报。**纪念日和倒计时共用这一个组件**。
@@ -109,22 +106,32 @@ class DaysPoster extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.start,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // ① 品牌：镂空透明立体字（用户要的质感）
+                          // ① 品牌：**实心 + 投影**（用户："干脆全部涂涂黑，然后做个阴影"）。
+                          // 深色主题上自动换成白字，不然黑字在深底上看不见。
                           Center(
-                            child: HollowText(
+                            child: Text(
                               footer,
-                              size: 17,
-                              color: style.accent,
-                              tracking: 4,
-                              strokeWidth: 1.3,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 4,
+                                color: style.isDark
+                                    ? Colors.white
+                                    : Colors.black,
+                                shadows: <Shadow>[
+                                  Shadow(
+                                    color: Colors.black.withValues(alpha: 0.45),
+                                    offset: const Offset(0, 2),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 13),
-                          // ② 装饰线：那点仪式感
-                          _Ornament(color: style.accent),
-                          // 品牌下面留一段再放卡片 —— 卡片大约落在屏幕 40% 处
-                          // （用户："把那个框框稍微调上一点点"→ 现在又说"再往下挪一点点"，
-                          //   所以这里取一个中间值）
+                          // ⚠️ 品牌下面原本有一条"菱形装饰线"，用户要求**删掉**
+                          // （"那个英文字下面那条小横线删掉"）。
+                          // 品牌和卡片之间留一段就好。
                           const SizedBox(height: 52),
                           // ③ 日历纸（名字写在它的标题条上）
                           _CalendarPage(
@@ -157,31 +164,6 @@ class DaysPoster extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// 一条极细的装饰线（两道短线夹一个菱形）。
-class _Ornament extends StatelessWidget {
-  const _Ornament({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final line = color.withValues(alpha: 0.55);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(width: 34, height: 1.2, color: line),
-        const SizedBox(width: 9),
-        Transform.rotate(
-          angle: math.pi / 4,
-          child: Container(width: 6, height: 6, color: line),
-        ),
-        const SizedBox(width: 9),
-        Container(width: 34, height: 1.2, color: line),
-      ],
     );
   }
 }
@@ -261,8 +243,9 @@ class _CalendarPage extends StatelessWidget {
   final DateTime date;
   final int digitFont;
 
-  /// 底部日期条的底色（比纸略深一档）
-  static const Color _strip = Color(0xFFF1EFEA);
+  /// 底部那条日期行上方的**分隔线**。
+  /// 用户说"那条线画得很奇怪、没画好、画深一点"，所以这里比纸张格线**明显深一档**。
+  static const BorderSide _stripLine = BorderSide(color: Color(0x2E000000));
 
   /// 标题条上**名字和「还有/已经」用同一个字号**（用户明确要求）
   static const double _headerFontSize = 17;
@@ -424,10 +407,11 @@ class _CalendarPage extends StatelessWidget {
             const SizedBox(height: 20),
             Container(
               decoration: const BoxDecoration(
-                color: _strip,
-                border: Border(
-                  top: BorderSide(color: MilestoneThemeStyle.paperLine),
-                ),
+                // ⚠️ **不要给它单独底色** —— 用户要求"跟那个白色框保持一致"，
+                // 保持透明才能让下面那张密格纸的格子一直连过来；
+                // 只画一条很浅的横线当分隔，像纸上印的那道线。
+                color: Colors.transparent,
+                border: Border(top: _stripLine),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
               child: Text(
@@ -476,7 +460,8 @@ class _StitchPainter extends CustomPainter {
 class _PaperTexturePainter extends CustomPainter {
   const _PaperTexturePainter();
 
-  static const double _step = 24;
+  /// 纸张格纹的间距。要"密"才有本子的感觉（用户两次说格子不够密）
+  static const double _step = 9;
 
   @override
   void paint(Canvas canvas, Size size) {

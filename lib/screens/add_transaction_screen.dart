@@ -429,9 +429,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     // 那样会出大问题 —— 用户把输入法按没了、焦点还留在备注上，自带键盘也不见了，
     // 屏幕上**两套键盘都没有**，就是"键盘弹不出来、输入不了"（用户实测报过这一条）。
     // 让位窗口一过就把键盘还回来，谁都不会卡住。
-    final keyboardOpen =
-        MediaQuery.viewInsetsOf(context).bottom > 0 ||
-        (_noteGrace && _noteFocus.hasFocus);
+    final imeUp = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final keyboardOpen = imeUp || (_noteGrace && _noteFocus.hasFocus);
 
     // 用户在设置里选了"用系统键盘输金额"时，收起自带数字键盘、改用输入框
     final useSystemKeyboard = context.watch<SettingsProvider>().useSystemKeyboard;
@@ -517,14 +516,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
             ),
           ),
-          // 备注拿到焦点时**整块底部栏都收起来** ——
-          // 金额、支付方式、常用、自带键盘、保存按钮全部让位，
-          // 这样打字框上面干干净净（用户反馈"打字框上面压着一条保存栏，有点遮挡"）。
-          //
-          // ⚠️ 判据是 **备注有没有焦点**，不是"键盘弹没弹出来"：
-          // 键盘弹出来也可能是别的输入框触发的（比如系统键盘模式下的金额框），
-          // 那种情况下**金额和保存必须留着** —— test/layout_test.dart 钉着这条（红线 22）。
-          if (!_noteFocus.hasFocus)
+          // ⚠️ 判据必须**同时**满足"备注有焦点"**且**"输入法真的弹着"。
+          // 只看焦点会出大 bug：用户把输入法按下去（返回键）之后，
+          // 备注**仍然有焦点**，底部栏就一直不回来 ——
+          // 金额、自带键盘、保存全不见，等于没法记账（用户实测报过，这是我引入的回归）。
+          // 输入法一收（imeUp 变 false），底部栏立刻回来。
+          if (!(_noteFocus.hasFocus && imeUp))
             Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
             decoration: BoxDecoration(
@@ -604,14 +601,17 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                // 备注在输入时，支付方式也收起来让位
-                if (!keyboardOpen) _PayMethodPicker(
-                  value: _payMethod,
-                  onChanged: (v) {
-                    Haptics.tap();
-                    setState(() => _payMethod = v);
-                  },
-                ),
+                // ⚠️ 支付方式只在**打备注**的时候收起。
+                // 不能写成 `if (!keyboardOpen)` —— 那样用系统键盘输金额时（键盘也弹着）
+                // 支付方式会被一起收掉，用户得先把键盘按下去才能选（用户报过这条）。
+                if (!(_noteFocus.hasFocus && imeUp))
+                  _PayMethodPicker(
+                    value: _payMethod,
+                    onChanged: (v) {
+                      Haptics.tap();
+                      setState(() => _payMethod = v);
+                    },
+                  ),
                 // 系统键盘弹出来时，自带键盘和「常用」都收起来让位给备注框
                 if (!keyboardOpen) ...[
                   const SizedBox(height: 10),
