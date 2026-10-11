@@ -31,11 +31,11 @@ class MilestoneDetailScreen extends StatelessWidget {
 
     return PosterScreen(
       style: themeStyleOf(milestone.theme),
-      poster: MilestoneCard(milestone: milestone),
+      // 第二个参数就是卡片下面那排按钮；分享截图时它是 null（图里不要按钮）
+      posterBuilder: (context, actions) =>
+          MilestoneCard(milestone: milestone, actions: actions),
       shareFileName: '纪念日-${milestone.title}',
       shareText: '「${milestone.title}」已经 ${milestone.elapsed.totalDays} 天',
-      editLabel: '编辑',
-      bottomRightLabel: '背景',
       onEdit: () async {
         Haptics.tap();
         await Navigator.of(context).push(

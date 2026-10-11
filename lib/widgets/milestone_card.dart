@@ -8,9 +8,12 @@ import 'days_poster.dart';
 /// 版式、配色、图案全在共用的 [DaysPoster] 里 —— 这里只负责把 [Milestone]
 /// 换算成海报要的那几个数（倒计时那边同理，走的是同一个组件）。
 class MilestoneCard extends StatelessWidget {
-  const MilestoneCard({super.key, required this.milestone});
+  const MilestoneCard({super.key, required this.milestone, this.actions});
 
   final Milestone milestone;
+
+  /// 卡片下面那排按钮（由详情页传进来；分享截图时是 null）
+  final Widget? actions;
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +31,7 @@ class MilestoneCard extends StatelessWidget {
       dateLabel: future ? '目标日' : '起始日',
       date: milestone.startDate,
       footer: '日贝 · 纪念',
+      actions: actions,
     );
   }
 }

@@ -26,7 +26,9 @@ class CountdownDetailScreen extends StatelessWidget {
 
     return PosterScreen(
       style: themeStyleOf(event.theme),
-      poster: CountdownPoster(event: event),
+      // 第二个参数就是卡片下面那排按钮；分享截图时它是 null（图里不要按钮）
+      posterBuilder: (context, actions) =>
+          CountdownPoster(event: event, actions: actions),
       shareFileName: '倒计时-${event.title}',
       shareText: days >= 0
           ? '「${event.title}」还有 $days 天'

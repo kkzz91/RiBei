@@ -9,9 +9,12 @@ import 'days_poster.dart';
 /// 版式、配色、图案全和纪念日共用 [DaysPoster]，差别只在这里：
 /// 纪念日是"从某个起始日往今天正计时"，倒计时是"从今天往目标日倒数"。
 class CountdownPoster extends StatelessWidget {
-  const CountdownPoster({super.key, required this.event});
+  const CountdownPoster({super.key, required this.event, this.actions});
 
   final CountdownEvent event;
+
+  /// 卡片下面那排按钮（由详情页传进来；分享截图时是 null）
+  final Widget? actions;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +45,7 @@ class CountdownPoster extends StatelessWidget {
       dateLabel: '目标日',
       date: target,
       footer: '日贝 · 倒计时',
+      actions: actions,
     );
   }
 }

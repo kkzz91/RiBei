@@ -1,23 +1,29 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../theme/milestone_themes.dart';
 import '../utils/formatters.dart';
 import 'milestone_pattern.dart';
 
-/// "还有 / 已经 N 天"那张海报。**纪念日和倒计时共用这一个组件** ——
-/// 两边的核心都是"离那个日子还有多少天"，只是取数方向不同。
+/// "还有 / 已经 N 天"那张海报。**纪念日和倒计时共用这一个组件**。
 ///
-/// 版式抄的参考图 `E:\ribei\样图.jpg`，自上而下是四段：
-///   ① 最顶上居中一行"店名"（参考图的 Days Matter，我们放「日贝 · 纪念 / 倒计时」）
-///   ② 一张**日历纸**卡片：标题条上写着「**名字 + 还有/已经**」
-///      （参考图名字就是那个小飞机），白纸上是一行超大天数，**天数下面是分析**，
-///      最底下一条浅灰日期条
-///   ③ 备注（有的话）—— 套一个圆角框，单摆一行字会显得很零碎
+/// 版式抄的参考图 `E:\ribei\样图.jpg`，自上而下是：
+///   ① 最顶上居中一行小字"店名"（参考图的 Days Matter）
+///   ② 一条极细的装饰线（菱形 + 两道短线）—— 仪式感靠这些细节堆
+///   ③ **名字当主角**：大字、宽字距、金色浮雕
+///   ④ 一张**日历纸**：标题条只写「还有 / 已经」，白纸上一行**超大天数**，
+///      下面接分析行，最底一条浅灰日期条
+///   ⑤ [actions]：详情页那排缩小药丸按钮（分享 / 背景 / 编辑）。
+///      **分享截图时会传 null**，所以分享出去的图里没有按钮。
+///   ⑥ 备注（有的话）套一个圆角框 —— 单摆一行字飘在背景上会显得很零碎
 ///
-/// ⚠️ 配色一律走 [MilestoneThemeStyle] 的**固定配色**，不跟随 App 深浅色（红线 24）——
-/// 分享出去的图必须"永远长这样"。
+/// ⚠️ 配色一律走 [MilestoneThemeStyle] 的**固定配色**，不跟随 App 深浅色（红线 24）。
 ///
 /// ⚠️ **不显示秒**（用户原话"页面数秒都来了"）。别在这里挂每秒重画的定时器。
+///
+/// ⚠️ 外层必须给**有界约束**（`Stack` 的要求），否则 release 下会整个 App 卡死 ——
+/// 详见红线 28 ④ 和 `poster_screen.dart`。
 class DaysPoster extends StatelessWidget {
   const DaysPoster({
     super.key,
@@ -30,13 +36,14 @@ class DaysPoster extends StatelessWidget {
     required this.date,
     required this.footer,
     this.note = '',
+    this.actions,
   });
 
-  /// 纪念日/倒计时的名字 —— 显示在**卡片标题条**上，不是卡片外面
+  /// 纪念日/倒计时的名字 —— 海报上的**主角**，大字显示
   final String title;
   final int theme;
 
-  /// 标题条上跟在名字后面的字：「还有」/「已经」/「已过」
+  /// 卡片标题条上的字：「还有」/「已经」/「已过」
   final String headerLabel;
 
   /// 大字那个数（传进来必须是非负数，方向由调用方决定）
@@ -54,9 +61,14 @@ class DaysPoster extends StatelessWidget {
 
   final String note;
 
+  /// 卡片下面那排按钮（详情页传进来；分享截图时传 null）
+  final Widget? actions;
+
   @override
   Widget build(BuildContext context) {
     final style = themeStyleOf(theme);
+    // "店名"要贴着手机最顶上，所以只让开状态栏这一点点
+    final topInset = MediaQuery.paddingOf(context).top;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -73,8 +85,6 @@ class DaysPoster extends StatelessWidget {
           ),
           // 上下压一层暗角：四周暗下去，中间的卡片才"浮"出来
           Positioned.fill(child: _Vignette(isDark: style.isDark)),
-          // 内容层。外层（PosterScreen）给的是**紧约束**，所以这里 c.maxHeight 有界，
-          // 可以拿它当"至少一屏高"：内容比一屏矮就垂直居中，比一屏高就退回可滚动。
           Positioned.fill(
             child: LayoutBuilder(
               builder: (context, c) {
@@ -82,14 +92,12 @@ class DaysPoster extends StatelessWidget {
                   child: ConstrainedBox(
                     constraints: BoxConstraints(minHeight: c.maxHeight),
                     child: Padding(
-                      // 上 92 给浮动的"返回/编辑"让位，下 96 给"分享"让位
-                      padding: const EdgeInsets.fromLTRB(20, 92, 20, 96),
+                      padding: EdgeInsets.fromLTRB(20, topInset + 14, 20, 30),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
-                        // ★ 整块内容在视口里**垂直居中**。
-                        // 生效的前提是上方约束里带 minHeight（这里由 ConstrainedBox 给），
-                        // RenderFlex 会把 余量 对半分 —— 所以上面那层不能省。
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        // 内容整体偏上（用户反馈"偏下"）—— 上半屏是海报的黄金位置，
+                        // 下半屏留白，和参考图一个观感。
+                        mainAxisAlignment: MainAxisAlignment.start,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           // ① 店名：参考图里"Days Matter"那个位置
@@ -97,39 +105,70 @@ class DaysPoster extends StatelessWidget {
                             footer,
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 5,
-                              color: style.accent,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 6,
+                              color: style.accent.withValues(alpha: 0.9),
                               shadows: <Shadow>[
                                 Shadow(
-                                  color: Colors.black.withValues(alpha: 0.32),
-                                  offset: const Offset(0, 2),
-                                  blurRadius: 5,
+                                  color: Colors.black.withValues(alpha: 0.30),
+                                  offset: const Offset(0, 1),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // ② 装饰线：仪式感
+                          _Ornament(color: style.accent),
+                          const SizedBox(height: 20),
+                          // ③ 名字当主角
+                          Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 6,
+                              height: 1.18,
+                              color: style.accent,
+                              // "浮雕金字"：一道下投影 + 一道上高光做出来。
+                              // 引字体要进 assets 声明（红线 10），所以不引。
+                              shadows: <Shadow>[
+                                Shadow(
+                                  color: Colors.black.withValues(alpha: 0.38),
+                                  offset: const Offset(0, 3),
+                                  blurRadius: 7,
                                 ),
                                 if (!style.isDark)
                                   Shadow(
-                                    color: Colors.white.withValues(alpha: 0.5),
+                                    color: Colors.white.withValues(alpha: 0.55),
                                     offset: const Offset(0, -1),
                                     blurRadius: 2,
                                   ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 28),
-                          // ② 日历纸
+                          const SizedBox(height: 26),
+                          // ④ 日历纸
                           _CalendarPage(
                             style: style,
-                            title: title,
                             header: headerLabel,
                             days: days,
                             breakdown: breakdown,
                             dateLabel: dateLabel,
                             date: date,
                           ),
-                          // ③ 备注：给它一个框
+                          // ⑤ 按钮：紧贴卡片下沿（参考图就是这样）
+                          if (actions != null) ...[
+                            const SizedBox(height: 14),
+                            actions!,
+                          ],
+                          // ⑥ 备注
                           if (note.isNotEmpty) ...[
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 20),
                             _NotePill(text: note, style: style),
                           ],
                         ],
@@ -142,6 +181,31 @@ class DaysPoster extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 一条极细的装饰线（两道短线夹一个菱形）。就为了那点"仪式感"。
+class _Ornament extends StatelessWidget {
+  const _Ornament({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final line = color.withValues(alpha: 0.55);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(width: 34, height: 1.2, color: line),
+        const SizedBox(width: 9),
+        Transform.rotate(
+          angle: math.pi / 4,
+          child: Container(width: 6, height: 6, color: line),
+        ),
+        const SizedBox(width: 9),
+        Container(width: 34, height: 1.2, color: line),
+      ],
     );
   }
 }
@@ -203,12 +267,11 @@ class _NotePill extends StatelessWidget {
   }
 }
 
-/// 参考图里那张"日历纸"：顶部彩色标题条（**名字 + 还有/已经**）+ 白纸 +
-/// 一行超大天数 + 天数下面的分析 + 底部浅灰日期条。
+/// 参考图里那张"日历纸"：顶部彩色标题条 + 白纸 + 一行超大天数 +
+/// 数字下面的分析行 + 底部浅灰日期条。
 class _CalendarPage extends StatelessWidget {
   const _CalendarPage({
     required this.style,
-    required this.title,
     required this.header,
     required this.days,
     required this.breakdown,
@@ -217,7 +280,6 @@ class _CalendarPage extends StatelessWidget {
   });
 
   final MilestoneThemeStyle style;
-  final String title;
   final String header;
   final int days;
   final String breakdown;
@@ -231,24 +293,24 @@ class _CalendarPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: <BoxShadow>[
           // 双层投影：近的一层收紧轮廓、远的一层铺开。
           // 单层投影在浅背景上会显脏，双层才有参考图那种"纸压在桌上"的手感。
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.20),
-            blurRadius: 7,
+            color: Colors.black.withValues(alpha: 0.22),
+            blurRadius: 8,
             offset: const Offset(0, 3),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.16),
-            blurRadius: 28,
-            offset: const Offset(0, 15),
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 30,
+            offset: const Offset(0, 16),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           // ⚠️ 必须 stretch：默认是 center，那样标题条只会包住字、
@@ -262,7 +324,7 @@ class _CalendarPage extends StatelessWidget {
 
   Widget _buildHeader() {
     return SizedBox(
-      height: 48,
+      height: 46,
       child: Stack(
         children: [
           Positioned.fill(child: ColoredBox(color: style.headerBar)),
@@ -281,37 +343,16 @@ class _CalendarPage extends StatelessWidget {
               ),
             ),
           ),
-          // 名字 + 还有/已经。名字小一号、淡一点 —— 参考图里那个小飞机就是名字
           Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                        color: style.headerInk.withValues(alpha: 0.88),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 9),
-                  Text(
-                    header,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2,
-                      color: style.headerInk,
-                    ),
-                  ),
-                ],
+            child: Text(
+              header,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 6,
+                // 字距会在最后一个字后面也垫一份，往左补偿一下才视觉居中
+                height: 1,
+                color: style.headerInk,
               ),
             ),
           ),
@@ -340,26 +381,27 @@ class _CalendarPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              padding: const EdgeInsets.fromLTRB(14, 26, 14, 0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // 超大天数：这是整张海报的视觉中心，宁可大一点
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
                       '$days',
                       maxLines: 1,
                       style: const TextStyle(
-                        fontSize: 118,
+                        fontSize: 150,
                         height: 1.0,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: -3,
+                        letterSpacing: -5,
                         color: MilestoneThemeStyle.paperInk,
                         shadows: <Shadow>[
                           Shadow(
-                            color: Color(0x1A000000),
-                            offset: Offset(0, 2),
-                            blurRadius: 3,
+                            color: Color(0x1F000000),
+                            offset: Offset(0, 3),
+                            blurRadius: 4,
                           ),
                         ],
                       ),
@@ -371,15 +413,16 @@ class _CalendarPage extends StatelessWidget {
                     breakdown,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xB31B1B1B),
+                      letterSpacing: 0.6,
+                      color: Color(0xB81B1B1B),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Container(
               decoration: const BoxDecoration(
                 color: _strip,
@@ -387,7 +430,7 @@ class _CalendarPage extends StatelessWidget {
                   top: BorderSide(color: MilestoneThemeStyle.paperLine),
                 ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
               child: Text(
                 '$dateLabel：${isoDateWithWeekday(date)}',
                 textAlign: TextAlign.center,
@@ -410,6 +453,7 @@ class _StitchPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (!size.width.isFinite) return;
     final paint = Paint()
       ..color = Colors.white.withValues(alpha: 0.5)
       ..strokeWidth = 1.2
@@ -437,7 +481,7 @@ class _PaperTexturePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // ⚠️ 安全兜底，别删：尺寸无穷时这里会永远转不完（真发生过一次，
+    // ⚠️ 安全兜底，别删：尺寸无穷时这里的循环会永远转不完（真发生过，
     // 见红线 28 ④ —— 海报被套进 SingleChildScrollView，Stack 尺寸变无限）。
     if (!size.width.isFinite || !size.height.isFinite) return;
 

@@ -35,6 +35,7 @@ import 'package:ribei/models/milestone.dart';
 import 'package:ribei/theme/milestone_themes.dart';
 import 'package:ribei/widgets/countdown_poster.dart';
 import 'package:ribei/widgets/milestone_card.dart';
+import 'package:ribei/widgets/poster_screen.dart';
 
 const _cjkFontPath = r'C:\Windows\Fonts\Deng.ttf';
 
@@ -142,7 +143,30 @@ void main() {
     await _shoot(tester, key, 'build/preview/themes.png');
   });
 
-  testWidgets('倒计时海报（同一套版式）', (WidgetTester tester) async {
+  testWidgets('纪念日完整详情页（带返回箭头和三个按钮）', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+
+    final m = _sample(5, '在一起');
+    final key = GlobalKey();
+    await tester.pumpWidget(
+      _root(
+        RepaintBoundary(
+          key: key,
+          child: PosterScreen(
+            style: themeStyleOf(m.theme),
+            posterBuilder: (context, actions) =>
+                MilestoneCard(milestone: m, actions: actions),
+            onEdit: () {},
+            shareFileName: 't',
+            shareText: 't',
+          ),
+        ),
+      ),
+    );
+    await _shoot(tester, key, 'build/preview/detail.png');
+  });
+
+  testWidgets('倒计时详情页（同一套版式）', (WidgetTester tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
 
     // 目标日放在 126 天后，和参考图那个数对上，好对比
@@ -150,10 +174,11 @@ void main() {
     final key = GlobalKey();
     await tester.pumpWidget(
       _root(
-        Scaffold(
-          body: RepaintBoundary(
-            key: key,
-            child: CountdownPoster(
+        RepaintBoundary(
+          key: key,
+          child: PosterScreen(
+            style: themeStyleOf(MilestoneTheme.deepBlue),
+            posterBuilder: (context, actions) => CountdownPoster(
               event: CountdownEvent(
                 title: '期末考试',
                 targetDate: DateTime(target.year, target.month, target.day),
@@ -161,7 +186,11 @@ void main() {
                 theme: MilestoneTheme.deepBlue,
                 createdAt: DateTime.now(),
               ),
+              actions: actions,
             ),
+            onEdit: () {},
+            shareFileName: 't',
+            shareText: 't',
           ),
         ),
       ),
