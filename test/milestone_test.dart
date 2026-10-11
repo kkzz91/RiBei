@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ribei/models/countdown_event.dart';
 import 'package:ribei/models/milestone.dart';
+import 'package:ribei/theme/milestone_themes.dart';
 
 /// 纪念日的"已经过了多久"——这是"准确"这个要求的核心，必须钉死。
 ///
@@ -122,6 +124,55 @@ void main() {
         'created_at': DateTime(2023, 1, 1).millisecondsSinceEpoch,
       };
       expect(Milestone.fromMap(legacy).theme, MilestoneTheme.blackGold);
+    });
+  });
+
+  group('主题表（下标就是存进库的值，不许错位）', () {
+    test('编号跟样式表一一对应', () {
+      expect(milestoneThemeStyles.length, MilestoneTheme.all.length);
+      for (final t in MilestoneTheme.all) {
+        expect(themeStyleOf(t).label, MilestoneTheme.labels[t]);
+      }
+    });
+
+    test('越界编号兜到黑金，不崩', () {
+      expect(themeStyleOf(-1), milestoneThemeStyles[MilestoneTheme.blackGold]);
+      expect(themeStyleOf(999), milestoneThemeStyles[MilestoneTheme.blackGold]);
+    });
+
+    test('老编号不许变：0~4 还是原来那五套', () {
+      // 这五套在 v1.6.0 及以前就发给用户了，编号已经写进数据库。
+      // 顺序一乱，老用户的纪念日/倒计时会集体换背景（红线 9 的同族规矩）。
+      expect(MilestoneTheme.blackGold, 0);
+      expect(MilestoneTheme.jade, 1);
+      expect(MilestoneTheme.deepBlue, 2);
+      expect(MilestoneTheme.sunset, 3);
+      expect(MilestoneTheme.paper, 4);
+      expect(milestoneThemeStyles[0].label, '黑金');
+      expect(milestoneThemeStyles[4].label, '极简白');
+    });
+  });
+
+  group('倒计时的背景主题（DB v6 加的列）', () {
+    test('toMap / fromMap 往返一致', () {
+      final e = CountdownEvent(
+        id: 3,
+        title: '期末考试',
+        targetDate: DateTime(2027, 1, 10),
+        theme: MilestoneTheme.wood,
+        createdAt: DateTime(2026, 1, 1),
+      );
+      expect(CountdownEvent.fromMap(e.toMap()).theme, MilestoneTheme.wood);
+    });
+
+    test('老数据缺 theme 字段时兜到黑金', () {
+      final legacy = <String, Object?>{
+        'id': 1,
+        'title': 'x',
+        'target_date': DateTime(2027, 1, 1).millisecondsSinceEpoch,
+        'created_at': DateTime(2026, 1, 1).millisecondsSinceEpoch,
+      };
+      expect(CountdownEvent.fromMap(legacy).theme, MilestoneTheme.blackGold);
     });
   });
 }

@@ -25,8 +25,27 @@ void main() {
     test('空串归 0', () {
       expect(sanitizeAmountInput(''), '0');
       expect(sanitizeAmountInput('abc'), '0');
-      // 单独一个点保留成 "."，是"正在敲 .5"的合法中间态
-      expect(sanitizeAmountInput('.'), '.');
+      // 单独一个点补成 "0."，是"正在敲 0.5"的合法中间态
+      expect(sanitizeAmountInput('.'), '0.');
+    });
+
+    test('去掉多余的前导 0（否则会显示成 ¥01）', () {
+      // 金额框初始显示的就是 '0'，用户再敲一位就成了 "01" —— 用户实测报过
+      expect(sanitizeAmountInput('01'), '1');
+      expect(sanitizeAmountInput('05'), '5');
+      expect(sanitizeAmountInput('007'), '7');
+      expect(sanitizeAmountInput('000'), '0');
+      expect(sanitizeAmountInput('0'), '0');
+      // 但 '0.5' 里那个 0 不是"多余的"，要留着
+      expect(sanitizeAmountInput('0.5'), '0.5');
+      expect(sanitizeAmountInput('00.5'), '0.5');
+      expect(sanitizeAmountInput('0005.25'), '5.25');
+    });
+
+    test('先剥前导零、再截长度，不能把有效数字截没', () {
+      // 反过来做的话 "0000000001" 会被截成 9 个 0 ⇒ 金额直接变成 0
+      expect(sanitizeAmountInput('0000000001'), '1');
+      expect(sanitizeAmountInput('00000000001234567890'), '123456789');
     });
   });
 }

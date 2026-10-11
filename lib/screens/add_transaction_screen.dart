@@ -68,14 +68,26 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     super.dispose();
   }
 
-  /// 备注一获得焦点，就把它滚进可见区域。
+  /// 备注框的焦点一变就重画，并把备注滚进可见区域。
   ///
-  /// 为什么非要单独做这一步：本页是"上半可滚动 + 下半固定块"的布局，
-  /// 键盘一弹出来，上半区会被压得很矮，Flutter 自带的 bringIntoView
-  /// 不一定能把备注顶到可见处 —— 实测有用户就是**在看不见输入框的情况下盲打**，
-  /// 写完也不知道有没有写错。
+  /// 为什么要靠"焦点"而不是只看系统键盘高度：焦点**立刻**可得，
+  /// 而 `MediaQuery.viewInsets` 要靠机型上报 —— 有些 ROM 会晚一两帧、
+  /// 甚至一直报 0。那几帧里自带数字键盘还占着屏幕，上半区被压成 0、
+  /// 备注框被挤出屏幕，用户就在**看不见输入框的情况下盲打**。
+  /// 所以下面 `keyboardOpen` 用的是"键盘高度 > 0 **或** 备注拿到了焦点"。
   void _onNoteFocus() {
+    if (mounted) setState(() {});
     if (!_noteFocus.hasFocus) return;
+    // 滚两次：第一次等本帧布局（自带键盘收起后上半区变高），
+    // 第二次等输入法动画走完 —— 只滚一次会被随后变矮的视口又挤出去。
+    _revealNote(const Duration(milliseconds: 220));
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted || !_noteFocus.hasFocus) return;
+      _revealNote(const Duration(milliseconds: 160));
+    });
+  }
+
+  void _revealNote(Duration duration) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final fieldContext = _noteFocus.context;
@@ -84,7 +96,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         fieldContext,
         // 别贴着头顶，留一点余量看着舒服
         alignment: 0.05,
-        duration: const Duration(milliseconds: 220),
+        duration: duration,
         curve: Curves.easeOut,
       );
     });
@@ -359,7 +371,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     // ② App 自带的数字键盘还留在屏幕上，另一套键盘也在，
     //    用户去点那排数字，改的却是**金额**（他反馈的"数字串入支出价"）。
     // 所以键盘一出来就把自带键盘收起（顺手把不相关的「常用」也收起来让位）。
-    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    // 注意后面那一条 `_noteFocus.hasFocus`：有些机型上报 viewInsets 会晚
+    // 一两帧、甚至一直报 0。只看键盘高度的话，那几帧里两套键盘会同时留在
+    // 屏幕上，老机型上半区还是被压成 0。焦点是立刻可得的信号，
+    // 不依赖机型上报的时机 —— 两条件取"或"，谁先到就听谁的。
+    final keyboardOpen =
+        MediaQuery.viewInsetsOf(context).bottom > 0 || _noteFocus.hasFocus;
 
     // 用户在设置里选了"用系统键盘输金额"时，收起自带数字键盘、改用输入框
     final useSystemKeyboard = context.watch<SettingsProvider>().useSystemKeyboard;

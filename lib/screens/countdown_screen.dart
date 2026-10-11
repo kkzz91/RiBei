@@ -5,6 +5,7 @@ import '../models/countdown_event.dart';
 import '../providers/countdown_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/milestone_themes.dart';
 import '../utils/formatters.dart';
 import '../utils/haptics.dart';
 import '../utils/lunar_date.dart';
@@ -12,6 +13,7 @@ import '../widgets/empty_state.dart';
 import '../widgets/pressable.dart';
 import '../widgets/reminder_status_banner.dart';
 import 'add_countdown_screen.dart';
+import 'countdown_detail_screen.dart';
 
 class CountdownScreen extends StatefulWidget {
   const CountdownScreen({super.key});
@@ -27,6 +29,17 @@ class _CountdownScreenState extends State<CountdownScreen> {
           builder: (_) => AddCountdownScreen(existing: existing),
         ),
       );
+
+  /// 点开看那张海报。改内容走海报页上的「背景 / 编辑」按钮 ——
+  /// 和纪念日那边一样：点一下先看大的，别一点就跳进表单。
+  void _openDetail(CountdownEvent event) {
+    Haptics.tap();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CountdownDetailScreen(countdownId: event.id ?? -1),
+      ),
+    );
+  }
 
   Future<void> _confirmDelete(CountdownEvent event) async {
     final ok = await showDialog<bool>(
@@ -109,7 +122,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
                     for (final e in upcoming)
                       _CountdownCard(
                         event: e,
-                        onTap: () => _openEditor(e),
+                        onTap: () => _openDetail(e),
                         onLongPress: () => _confirmDelete(e),
                       ),
                   ],
@@ -118,7 +131,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
                     for (final e in archived)
                       _CountdownCard(
                         event: e,
-                        onTap: () => _openEditor(e),
+                        onTap: () => _openDetail(e),
                         onLongPress: () => _confirmDelete(e),
                       ),
                   ],
@@ -229,13 +242,38 @@ class _CountdownCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final style = themeStyleOf(event.theme);
     final days = event.daysLeft;
-    final color = p.urgencyOf(days);
+    // 紧迫色只留给"左色条"和"临近标签"：这两处是**实色**，
+    // 换到任何主题底色上都看得清。天数徽标和进度条改用主题强调色，
+    // 否则在深色主题上会出现"深红压近黑"这种看不清的组合。
+    final urgency = p.urgencyOf(days);
     final target = event.effectiveTarget;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Card(
+      child: Container(
+        // 倒计时也用自己那套主题的底色 —— 和纪念日列表同一个口径
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: style.gradient,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Card(
+        color: Colors.transparent,
+        elevation: 0,
+        // Card 自带的 4px 外边距会让底色和内容对不齐，这里去掉
+        margin: EdgeInsets.zero,
         // 让内容按卡片圆角裁剪，左色条才不会和卡片描边叠成"两套框"
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -246,13 +284,14 @@ class _CountdownCard extends StatelessWidget {
               // 色条自动撑满卡片高度
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(width: 5, color: color),
+                Container(width: 5, color: urgency),
                 const SizedBox(width: 14),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   child: _DayBadge(
                     days: days,
-                    color: color,
+                    color: style.accent,
+                    isDark: style.isDark,
                     isPast: event.isPast,
                   ),
                 ),
@@ -275,7 +314,7 @@ class _CountdownCard extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 15.5,
                                   fontWeight: FontWeight.w700,
-                                  color: p.ink,
+                                  color: style.text,
                                 ),
                               ),
                             ),
@@ -283,14 +322,15 @@ class _CountdownCard extends StatelessWidget {
                               const SizedBox(width: 6),
                               _Tag(
                                 text: days == 0 ? '今天' : '$days 天内',
-                                color: color,
+                                color: urgency,
+                                solid: true,
                               ),
                             ],
                             if (event.isRepeating) ...[
                               const SizedBox(width: 6),
                               _Tag(
                                 text: CountdownRepeat.labels[event.repeat] ?? '',
-                                color: p.inkSoft,
+                                color: style.textSoft,
                               ),
                             ],
                           ],
@@ -302,30 +342,36 @@ class _CountdownCard extends StatelessWidget {
                             Icon(
                               Icons.event_outlined,
                               size: 12,
-                              color: p.inkFaint,
+                              color: style.textSoft,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               formatFullDate(target),
-                              style: AppText.label(
-                                context,
-                              ).copyWith(fontSize: 11.5),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: style.textSoft,
+                              ),
                             ),
                             if (event.isLunar) ...[
                               const SizedBox(width: 8),
                               Text(
                                 '农历 ${LunarDate.monthName(event.lunarMonth)}月'
                                 '${LunarDate.dayName(event.lunarDay)}',
-                                style: AppText.label(
-                                  context,
-                                ).copyWith(fontSize: 11.5),
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: style.textSoft,
+                                ),
                               ),
                             ],
                           ],
                         ),
                         const SizedBox(height: 9),
                         // 进度条
-                        _ProgressBar(value: event.progress, color: color),
+                        _ProgressBar(
+                          value: event.progress,
+                          color: style.accent,
+                          track: style.textSoft,
+                        ),
                         const SizedBox(height: 9),
                         // 提醒设置
                         Row(
@@ -336,8 +382,8 @@ class _CountdownCard extends StatelessWidget {
                                   : Icons.notifications_off_outlined,
                               size: 13,
                               color: event.remindEnabled
-                                  ? p.jade
-                                  : p.inkFaint,
+                                  ? style.accent
+                                  : style.textSoft,
                             ),
                             const SizedBox(width: 5),
                             Flexible(
@@ -348,9 +394,10 @@ class _CountdownCard extends StatelessWidget {
                                     : '未开启提醒',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: AppText.label(
-                                  context,
-                                ).copyWith(fontSize: 11.5),
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: style.textSoft,
+                                ),
                               ),
                             ),
                           ],
@@ -365,13 +412,14 @@ class _CountdownCard extends StatelessWidget {
                     child: Icon(
                       Icons.chevron_right,
                       size: 20,
-                      color: p.inkFaint,
+                      color: style.textSoft,
                     ),
                   ),
                 ),
               ],
             ),
           ),
+        ),
         ),
       ),
     );
@@ -393,16 +441,19 @@ class _DayBadge extends StatelessWidget {
   const _DayBadge({
     required this.days,
     required this.color,
+    required this.isDark,
     required this.isPast,
   });
 
   final int days;
   final Color color;
+
+  /// 取的是**主题**的深浅，不是 App 深浅色 —— 卡片底色来自主题
+  final bool isDark;
   final bool isPast;
 
   @override
   Widget build(BuildContext context) {
-    final p = context.palette;
     final text = days.abs().toString();
     final size = switch (text.length) {
       1 => 34.0,
@@ -416,7 +467,7 @@ class _DayBadge extends StatelessWidget {
       height: 58,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: p.isDark ? 0.17 : 0.09),
+        color: color.withValues(alpha: isDark ? 0.20 : 0.14),
         borderRadius: BorderRadius.circular(16),
       ),
       child: FittedBox(
@@ -464,14 +515,20 @@ class _DayBadge extends StatelessWidget {
 
 /// 细进度条：0 = 刚开始，满格 = 到日子了
 class _ProgressBar extends StatelessWidget {
-  const _ProgressBar({required this.value, required this.color});
+  const _ProgressBar({
+    required this.value,
+    required this.color,
+    required this.track,
+  });
 
   final double value;
   final Color color;
 
+  /// 底槽颜色（跟着主题走，别用 App 的描边色 —— 那是给纸底设计的）
+  final Color track;
+
   @override
   Widget build(BuildContext context) {
-    final p = context.palette;
     return Row(
       children: [
         Expanded(
@@ -485,7 +542,7 @@ class _ProgressBar extends StatelessWidget {
               builder: (context, v, _) => LinearProgressIndicator(
                 value: v,
                 minHeight: 5,
-                backgroundColor: p.line,
+                backgroundColor: track.withValues(alpha: 0.22),
                 valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ),
@@ -494,7 +551,7 @@ class _ProgressBar extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           '${(value * 100).round()}%',
-          style: AppText.label(context).copyWith(fontSize: 10.5),
+          style: TextStyle(fontSize: 10.5, color: track),
         ),
       ],
     );
@@ -502,17 +559,21 @@ class _ProgressBar extends StatelessWidget {
 }
 
 class _Tag extends StatelessWidget {
-  const _Tag({required this.text, required this.color});
+  const _Tag({required this.text, required this.color, this.solid = false});
 
   final String text;
   final Color color;
+
+  /// 实心标签（底色即 [color]、字用白色）：用于"临近"这种必须一眼看见的标记，
+  /// 免得低透明度色块压在深色主题上看不清
+  final bool solid;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: solid ? color : color.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
@@ -520,7 +581,7 @@ class _Tag extends StatelessWidget {
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w700,
-          color: color,
+          color: solid ? Colors.white : color,
         ),
       ),
     );

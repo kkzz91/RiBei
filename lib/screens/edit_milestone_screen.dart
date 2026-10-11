@@ -4,11 +4,11 @@ import 'package:provider/provider.dart';
 import '../models/milestone.dart';
 import '../providers/milestone_provider.dart';
 import '../theme/app_theme.dart';
-import '../theme/milestone_themes.dart';
 import '../utils/formatters.dart';
 import '../utils/haptics.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/pressable.dart';
+import '../widgets/theme_picker.dart';
 
 /// 新建 / 编辑一个纪念日。
 class EditMilestoneScreen extends StatefulWidget {
@@ -179,7 +179,7 @@ class _EditMilestoneScreenState extends State<EditMilestoneScreen> {
           const SizedBox(height: 22),
           Text('背景主题', style: AppText.sectionTitle(context)),
           const SizedBox(height: 10),
-          _ThemePicker(value: _theme, onChanged: (v) {
+          ThemePicker(value: _theme, onChanged: (v) {
             Haptics.tap();
             setState(() => _theme = v);
           }),
@@ -195,75 +195,6 @@ class _EditMilestoneScreenState extends State<EditMilestoneScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// 5 套主题的色块选择器：每个格子直接就是那套主题的渐变，所见即所得
-class _ThemePicker extends StatelessWidget {
-  const _ThemePicker({required this.value, required this.onChanged});
-
-  final int value;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: milestoneThemeStyles.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.5,
-      ),
-      itemBuilder: (context, i) {
-        final style = milestoneThemeStyles[i];
-        final selected = i == value;
-        return GestureDetector(
-          onTap: () => onChanged(i),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: style.gradient,
-              ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: selected ? p.jade : Colors.transparent,
-                width: 2.4,
-              ),
-            ),
-            child: Stack(
-              children: [
-                Center(
-                  child: Text(
-                    style.label,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: style.text,
-                    ),
-                  ),
-                ),
-                if (selected)
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Icon(
-                      Icons.check_circle,
-                      size: 18,
-                      color: style.accent,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

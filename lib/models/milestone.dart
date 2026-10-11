@@ -1,14 +1,30 @@
 /// 纪念日的背景主题
+///
+/// ⚠️ **这些常量的数值就是存进数据库 `milestones.theme` 的值，也是
+/// `milestoneThemeStyles` 里的下标。只许往后加，不许插入或调整顺序** ——
+/// 否则老数据的主题会集体换掉（和红线 9 的枚举取值是同一条规矩）。
 class MilestoneTheme {
   const MilestoneTheme._();
 
-  static const blackGold = 0; // 黑金（参考图那种"氛围感"）
-  static const jade = 1; // 玉青（延续 App 主色）
+  static const blackGold = 0; // 黑金
+  static const jade = 1; // 玉青
   static const deepBlue = 2; // 深空蓝
   static const sunset = 3; // 暖橙日暮
   static const paper = 4; // 极简白
+  static const pinkHearts = 5; // 粉雾爱心（v1.6.1 新增）
+  static const wood = 6; // 原木（v1.6.1 新增）
+  static const mint = 7; // 薄荷（v1.6.1 新增）
 
-  static const all = <int>[blackGold, jade, deepBlue, sunset, paper];
+  static const all = <int>[
+    blackGold,
+    jade,
+    deepBlue,
+    sunset,
+    paper,
+    pinkHearts,
+    wood,
+    mint,
+  ];
 
   static const labels = <int, String>{
     blackGold: '黑金',
@@ -16,6 +32,9 @@ class MilestoneTheme {
     deepBlue: '深空蓝',
     sunset: '暖橙日暮',
     paper: '极简白',
+    pinkHearts: '粉雾爱心',
+    wood: '原木',
+    mint: '薄荷',
   };
 }
 

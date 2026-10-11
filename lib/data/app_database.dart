@@ -67,11 +67,14 @@ class AppDatabase {
   /// v3: 倒计时增加 农历/重复/提前天数；待办增加 优先级/重复/宽限
   /// v4: 账目增加 支付方式
   /// v5: 新增 milestones（纪念日/正计时）
+  /// v6: 倒计时增加 背景主题（和纪念日共用同一套主题）
   ///
   /// v1.5.3 重写了迁移逻辑（对账式自愈），v1.5.x 没改结构。
   /// v1.6.0 加了 milestones 表 —— 因为 _createAll 全程 IF NOT EXISTS，
   /// 老库升级时会**自动补建这张表**，不需要任何 ALTER。
-  static const _dbVersion = 5;
+  /// v6 是"加列"，所以必须同时改两处：建表语句 + [_countdownAddedColumns]
+  /// （只改一处的话，全新安装没事、老库升上来会缺这一列 —— 有脚本守着）。
+  static const _dbVersion = 6;
 
   /// 备份文件名前缀（纯 ASCII：避免任何编码问题）
   static const _backupPrefix = 'ribei.backup';
@@ -201,7 +204,10 @@ class AppDatabase {
   /// 这样从任意旧版本跳过来、或者上次迁移只做了一半，跑一次都能补齐。
   Future<void> _reconcileSchema(Database db) async {
     await _createAll(db);
-    await _addMissingColumns(db, 'countdown_events', _countdownV3Columns);
+    // 倒计时的列分两次加过（v3 农历/重复/提前天数、v6 背景主题），
+    // 但这里**不按版本分别处理** —— 一律"对照目标结构缺什么补什么"，
+    // 所以它们合在一张表里，跑一次就补齐（幂等，见类顶部的四条保证）。
+    await _addMissingColumns(db, 'countdown_events', _countdownAddedColumns);
     await _addMissingColumns(db, 'todos', _todoV3Columns);
     await _addMissingColumns(db, 'transactions', _transactionV4Columns);
   }
@@ -238,6 +244,7 @@ class AppDatabase {
         lunar_day INTEGER NOT NULL DEFAULT 1,
         repeat_rule INTEGER NOT NULL DEFAULT 0,
         lead_days INTEGER NOT NULL DEFAULT 3,
+        theme INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL
       )
     ''');
@@ -302,13 +309,16 @@ class AppDatabase {
     };
   }
 
-  // v3：倒计时的农历 / 重复 / 提前天数
-  static const _countdownV3Columns = <String, String>{
+  // 倒计时表"后加的列"：v3 的农历/重复/提前天数 + v6 的背景主题。
+  // 加新列时**这里和 _createAll 的建表语句都要改**（tools/check_migration_v4.py
+  // 的第 0 节会双向核对，只改一处会直接报错）。
+  static const _countdownAddedColumns = <String, String>{
     'calendar': 'INTEGER NOT NULL DEFAULT 0',
     'lunar_month': 'INTEGER NOT NULL DEFAULT 1',
     'lunar_day': 'INTEGER NOT NULL DEFAULT 1',
     'repeat_rule': 'INTEGER NOT NULL DEFAULT 0',
     'lead_days': 'INTEGER NOT NULL DEFAULT 3',
+    'theme': 'INTEGER NOT NULL DEFAULT 0',
   };
 
   // v3：待办的优先级 / 重复 / 宽限

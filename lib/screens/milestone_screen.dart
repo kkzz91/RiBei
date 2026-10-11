@@ -133,7 +133,9 @@ class _MilestoneTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    elapsed.isFuture ? '未开始' : '第 ${milestone.dayNumber} 天',
+                    // 和详情页卡片里的口径保持一致（都是"已经 N 天"）——
+                    // 详情卡片写「已经 126」、列表写「第 127 天」会让人以为哪个算错了
+                    elapsed.isFuture ? '还没开始' : '已经 ${elapsed.totalDays} 天',
                     style: TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.w800,

@@ -25,7 +25,9 @@ DART = 'E:/ribei/lib/data/app_database.dart'
 # Dart 里那些"后加的列"是分开命名的，这里显式对上表名。
 # 新增迁移时**必须同步加进来** —— 漏了的话下面的校验会直接报错，不会静默放过。
 COLUMN_MAPS = {
-    'countdown_events': '_countdownV3Columns',
+    # 倒计时的"后加的列"分两次加过（v3 农历/重复/提前天数、v6 背景主题），
+    # 但 Dart 那边合在一张表里，所以这里也对上同一个名字。
+    'countdown_events': '_countdownAddedColumns',
     'todos': '_todoV3Columns',
     'transactions': '_transactionV4Columns',
 }
@@ -275,9 +277,9 @@ def main():
     check('老账目一律「未记录」(-1)',
           [r[0] for r in db.execute('SELECT payment_method FROM transactions')]
           == [-1, -1, -1])
-    check('老倒计时拿到 v3 默认值 (0,1,1,0,3)',
-          db.execute('SELECT calendar, lunar_month, lunar_day, repeat_rule, lead_days '
-                     'FROM countdown_events').fetchone() == (0, 1, 1, 0, 3))
+    check('老倒计时拿到补列默认值 (0,1,1,0,3,0)',
+          db.execute('SELECT calendar, lunar_month, lunar_day, repeat_rule, lead_days, theme '
+                     'FROM countdown_events').fetchone() == (0, 1, 1, 0, 3, 0))
     check('老待办拿到 v3 默认值 (1,0,0)',
           db.execute('SELECT priority, repeat_rule, grace_minutes FROM todos')
             .fetchone() == (1, 0, 0))

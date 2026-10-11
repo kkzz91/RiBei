@@ -16,9 +16,16 @@ import '../theme/milestone_themes.dart';
 import '../utils/haptics.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/milestone_card.dart';
+import '../widgets/pressable.dart';
 import 'edit_milestone_screen.dart';
 
-/// 纪念日详情：全屏氛围卡 + 实时走动的时间 + 分享。
+/// 纪念日详情：整屏图案背景 + 中间一张日历纸卡片 + 一排药丸按钮。
+///
+/// 版式抄的参考图 `E:\ribei\样图.jpg`。
+///
+/// ⚠️ **不再每秒重画**（用户原话"页面数秒都来了"）。旧版挂了个
+/// `Timer.periodic(1s)` 让"时分秒"一直走，代价是每秒重建整页 + 每秒重画背景图案。
+/// 现在只排一个**跨零点**的定时器：天数会在零点自动翻，秒不必走。
 class MilestoneDetailScreen extends StatefulWidget {
   const MilestoneDetailScreen({super.key, required this.milestoneId});
 
@@ -30,22 +37,34 @@ class MilestoneDetailScreen extends StatefulWidget {
 
 class _MilestoneDetailScreenState extends State<MilestoneDetailScreen> {
   final GlobalKey _cardKey = GlobalKey();
-  Timer? _ticker;
+  Timer? _midnightTick;
   bool _sharing = false;
 
   @override
   void initState() {
     super.initState();
-    // 每秒重画一次，让"第 N 天 / 时分秒"一直走动
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
+    _scheduleMidnightTick();
   }
 
   @override
   void dispose() {
-    _ticker?.cancel();
+    _midnightTick?.cancel();
     super.dispose();
+  }
+
+  /// 只在跨过零点时重画一次 —— 天数要跟着变，秒不用走。
+  void _scheduleMidnightTick() {
+    _midnightTick?.cancel();
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    _midnightTick = Timer(
+      nextMidnight.difference(now) + const Duration(seconds: 1),
+      () {
+        if (!mounted) return;
+        setState(() {});
+        _scheduleMidnightTick();
+      },
+    );
   }
 
   Milestone _milestone(MilestoneProvider provider) {
@@ -83,6 +102,8 @@ class _MilestoneDetailScreenState extends State<MilestoneDetailScreen> {
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
       if (data == null) throw StateError('图片编码失败');
 
+      // ⚠️ 不能写进 cacheDir/share_plus/ —— share_plus 自己会把要分享的文件
+      // 复制进那个目录，发现文件本来就在里面会直接抛 IOException（红线 14）。
       final dir = Directory(
         '${(await getTemporaryDirectory()).path}/ribei_share',
       );
@@ -125,52 +146,100 @@ class _MilestoneDetailScreenState extends State<MilestoneDetailScreen> {
     final style = themeStyleOf(milestone.theme);
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: style.gradient,
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
+      // 兜底色：极窄机型上背景图案和屏幕边缘之间也不会露白
+      backgroundColor: style.gradient.last,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return Stack(
             children: [
-              // 顶部操作条（浮在背景上）
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-                child: Row(
-                  children: [
-                    _RoundBtn(
-                      icon: Icons.arrow_back,
-                      color: style.text,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                    const Spacer(),
-                    _RoundBtn(
-                      icon: Icons.edit_outlined,
-                      color: style.text,
-                      onTap: () => _edit(milestone),
-                    ),
-                    const SizedBox(width: 8),
-                    _RoundBtn(
-                      icon: _sharing ? Icons.hourglass_top : Icons.ios_share,
-                      color: style.text,
-                      onTap: _sharing ? null : () => _share(milestone),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-                  child: Center(
-                    child: RepaintBoundary(
-                      key: _cardKey,
-                      child: MilestoneCard(milestone: milestone),
-                    ),
+              // 海报本体（自带背景图案）——**分享图截的就是它**。
+              // minHeight 撑满视口，这样图案铺满整屏；内容超出时会自然变高、可滚动。
+              SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: RepaintBoundary(
+                    key: _cardKey,
+                    child: MilestoneCard(milestone: milestone),
                   ),
                 ),
+              ),
+              // 下面这两层按钮是**浮在**海报上的，不在 RepaintBoundary 里
+              // ⇒ 分享出去的图里不会有按钮。
+              _topBar(context, style, milestone),
+              _bottomBar(context, style, milestone),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _topBar(
+    BuildContext context,
+    MilestoneThemeStyle style,
+    Milestone milestone,
+  ) {
+    return Positioned(
+      left: 12,
+      right: 12,
+      top: 0,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(
+            children: [
+              _Pill(
+                icon: Icons.arrow_back,
+                label: '返回',
+                style: style,
+                filled: false,
+                onTap: () => Navigator.of(context).pop(),
+              ),
+              const Spacer(),
+              _Pill(
+                icon: Icons.edit_outlined,
+                label: '编辑',
+                style: style,
+                filled: false,
+                onTap: () => _edit(milestone),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _bottomBar(
+    BuildContext context,
+    MilestoneThemeStyle style,
+    Milestone milestone,
+  ) {
+    return Positioned(
+      left: 16,
+      right: 16,
+      bottom: 0,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: _Pill(
+                  icon: _sharing ? Icons.hourglass_top : Icons.ios_share,
+                  label: _sharing ? '生成中…' : '分享',
+                  style: style,
+                  filled: true,
+                  onTap: _sharing ? null : () => _share(milestone),
+                ),
+              ),
+              const SizedBox(width: 10),
+              _Pill(
+                icon: Icons.palette_outlined,
+                label: '背景',
+                style: style,
+                filled: false,
+                onTap: () => _edit(milestone),
               ),
             ],
           ),
@@ -180,28 +249,61 @@ class _MilestoneDetailScreenState extends State<MilestoneDetailScreen> {
   }
 }
 
-class _RoundBtn extends StatelessWidget {
-  const _RoundBtn({
+/// 参考图里那种圆角药丸按钮。
+///
+/// [filled] 用主题强调色打底（底色是浅色就配深字，反之配白字），
+/// 否则用一层半透明底 —— 深色主题铺白、浅色主题铺白，两种都能保证字看得清。
+class _Pill extends StatelessWidget {
+  const _Pill({
     required this.icon,
-    required this.color,
+    required this.label,
+    required this.style,
+    required this.filled,
     required this.onTap,
   });
 
   final IconData icon;
-  final Color color;
+  final String label;
+  final MilestoneThemeStyle style;
+  final bool filled;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: color.withValues(alpha: 0.12),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Icon(icon, size: 22, color: color),
+    final fg = filled
+        ? (ThemeData.estimateBrightnessForColor(style.accent) == Brightness.dark
+              ? Colors.white
+              : const Color(0xFF1B1B1B))
+        : style.text;
+
+    return Pressable(
+      child: Material(
+        color: filled
+            ? style.accent
+            : Colors.white.withValues(alpha: style.isDark ? 0.14 : 0.55),
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 17, color: fg),
+                const SizedBox(width: 7),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: fg,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

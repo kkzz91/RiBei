@@ -7,6 +7,7 @@ import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../utils/lunar_date.dart';
+import '../widgets/theme_picker.dart';
 
 class AddCountdownScreen extends StatefulWidget {
   const AddCountdownScreen({super.key, this.existing});
@@ -31,6 +32,9 @@ class _AddCountdownScreenState extends State<AddCountdownScreen> {
   late bool _remind;
   late int _hour;
   late int _minute;
+
+  /// 详情页海报的背景主题（取值见 `MilestoneTheme`，和纪念日共用同一套）
+  late int _theme;
   bool _saving = false;
 
   bool get _isEditing => widget.existing != null;
@@ -50,6 +54,7 @@ class _AddCountdownScreenState extends State<AddCountdownScreen> {
     _remind = e?.remindEnabled ?? true;
     _hour = e?.remindHour ?? 9;
     _minute = e?.remindMinute ?? 0;
+    _theme = e?.theme ?? 0;
 
     // 农历字段：老数据没有就从当前公历日期反推，给用户一个合理起点
     if (e != null && e.isLunar) {
@@ -82,6 +87,7 @@ class _AddCountdownScreenState extends State<AddCountdownScreen> {
     remindEnabled: _remind,
     remindHour: _hour,
     remindMinute: _minute,
+    theme: _theme,
     createdAt: widget.existing?.createdAt ?? DateTime.now(),
   );
 
@@ -246,6 +252,7 @@ class _AddCountdownScreenState extends State<AddCountdownScreen> {
       lunarDay: _lunarDay,
       repeat: _repeat,
       leadDays: _leadDays,
+      theme: _theme,
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
     );
 
@@ -471,6 +478,12 @@ class _AddCountdownScreenState extends State<AddCountdownScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 18),
+
+          const _FieldLabel('背景主题'),
+          ThemePicker(value: _theme, onChanged: (v) {
+            setState(() => _theme = v);
+          }),
           const SizedBox(height: 18),
 
           const _FieldLabel('备注'),

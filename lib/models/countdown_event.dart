@@ -75,6 +75,7 @@ class CountdownEvent {
     this.lunarDay = 1,
     this.repeat = CountdownRepeat.none,
     this.leadDays = 3,
+    this.theme = 0,
     required this.createdAt,
   });
 
@@ -101,6 +102,12 @@ class CountdownEvent {
 
   /// 提前几天开始提醒（默认 3）
   final int leadDays;
+
+  /// 详情页海报的背景主题。
+  ///
+  /// **取值和纪念日共用同一套** —— 就是 `MilestoneTheme` 里那串常量，
+  /// 也就是 `milestoneThemeStyles` 的下标；存进库的值同样**只许往后加**。
+  final int theme;
 
   final DateTime createdAt;
 
@@ -249,6 +256,7 @@ class CountdownEvent {
     int? lunarDay,
     int? repeat,
     int? leadDays,
+    int? theme,
     DateTime? createdAt,
   }) {
     return CountdownEvent(
@@ -264,6 +272,7 @@ class CountdownEvent {
       lunarDay: lunarDay ?? this.lunarDay,
       repeat: repeat ?? this.repeat,
       leadDays: leadDays ?? this.leadDays,
+      theme: theme ?? this.theme,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -281,6 +290,7 @@ class CountdownEvent {
     'lunar_day': lunarDay,
     'repeat_rule': repeat,
     'lead_days': leadDays,
+    'theme': theme,
     'created_at': createdAt.millisecondsSinceEpoch,
   };
 
@@ -297,6 +307,7 @@ class CountdownEvent {
     lunarDay: m['lunar_day'] as int? ?? 1,
     repeat: m['repeat_rule'] as int? ?? CountdownRepeat.none,
     leadDays: m['lead_days'] as int? ?? 3,
+    theme: m['theme'] as int? ?? 0,
     createdAt: DateTime.fromMillisecondsSinceEpoch(m['created_at'] as int),
   );
 }
