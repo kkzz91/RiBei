@@ -7,7 +7,7 @@ import '../theme/milestone_themes.dart';
 import '../utils/haptics.dart';
 import '../widgets/milestone_card.dart';
 import '../widgets/poster_screen.dart';
-import 'edit_milestone_screen.dart';
+import 'add_day_screen.dart';
 
 /// 纪念日详情。
 ///
@@ -40,7 +40,7 @@ class MilestoneDetailScreen extends StatelessWidget {
         Haptics.tap();
         await Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => EditMilestoneScreen(existing: milestone),
+            builder: (_) => AddDayScreen(milestone: milestone),
           ),
         );
       },

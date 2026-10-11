@@ -12,9 +12,8 @@ import '../utils/haptics.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/pressable.dart';
 import '../widgets/reminder_status_banner.dart';
-import 'add_countdown_screen.dart';
+import 'add_day_screen.dart';
 import 'countdown_detail_screen.dart';
-import 'edit_milestone_screen.dart';
 import 'milestone_detail_screen.dart';
 
 /// 「日子」——**倒计时和纪念日合并后的那一个板块**。
@@ -89,39 +88,12 @@ class DaysScreen extends StatelessWidget {
 
   // ---------------------------------------------------------------- 动作
 
+  /// 新建：**不再问"倒计时还是纪念日"** —— 统一进一个页面，
+  /// 由「选的日子在过去还是未来」自动决定（见 [AddDayScreen]）。
   Future<void> _openAdd(BuildContext context) async {
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.hourglass_empty),
-              title: const Text('新建倒计时'),
-              subtitle: const Text('设个未来的日子，临近时每天提醒你'),
-              onTap: () => Navigator.pop(ctx, 'countdown'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.favorite_outline),
-              title: const Text('新建纪念日'),
-              subtitle: const Text('记下「在一起」这种日子，帮你正计时'),
-              onTap: () => Navigator.pop(ctx, 'milestone'),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-    if (choice == null || !context.mounted) return;
     Haptics.tap();
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => choice == 'countdown'
-            ? const AddCountdownScreen()
-            : const EditMilestoneScreen(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const AddDayScreen()),
     );
   }
 
@@ -219,15 +191,13 @@ class DaysScreen extends StatelessWidget {
       final m = _findMilestone(context.read<MilestoneProvider>(), row.id);
       if (m == null) return;
       await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => EditMilestoneScreen(existing: m),
-        ),
+        MaterialPageRoute<void>(builder: (_) => AddDayScreen(milestone: m)),
       );
     } else {
       final e = _findCountdown(context.read<CountdownProvider>(), row.id);
       if (e == null) return;
       await Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => AddCountdownScreen(existing: e)),
+        MaterialPageRoute<void>(builder: (_) => AddDayScreen(countdown: e)),
       );
     }
   }

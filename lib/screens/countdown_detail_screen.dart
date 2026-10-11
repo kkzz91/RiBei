@@ -7,7 +7,7 @@ import '../theme/milestone_themes.dart';
 import '../utils/haptics.dart';
 import '../widgets/countdown_poster.dart';
 import '../widgets/poster_screen.dart';
-import 'add_countdown_screen.dart';
+import 'add_day_screen.dart';
 
 /// 倒计时详情。
 ///
@@ -37,7 +37,7 @@ class CountdownDetailScreen extends StatelessWidget {
         Haptics.tap();
         await Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => AddCountdownScreen(existing: event),
+            builder: (_) => AddDayScreen(countdown: event),
           ),
         );
       },
