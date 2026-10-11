@@ -456,7 +456,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               Padding(
                 padding: const EdgeInsets.only(right: 4),
                 child: Center(
-                  child: Text('已记 $_batchCount 笔', style: AppText.label(context)),
+                  child: Text(
+                    '已记 $_batchCount 笔',
+                    // ⚠️ 顶栏是深色底，这里必须用浅色字（用 AppText.label 会糊成一团）
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             IconButton(
@@ -525,9 +533,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      // 金额**绝不能截断**：这是用户正在输入的数字，
-                      // 看不全就不知道自己记了多少。
-                      child: useSystemKeyboard
+                      // 备注在输入时（keyboardOpen）**把金额显示收掉** ——
+                      // 用户反馈："用自带键盘打备注时，那个 0 元就压在打字栏上面，挡着写"。
+                      // 保存按钮留着（不然没法存），下面那排支付方式也一起收。
+                      child: keyboardOpen
+                          ? const SizedBox.shrink()
+                          : useSystemKeyboard
                           ? TextField(
                               controller: _amountController,
                               focusNode: _amountFocus,
@@ -588,7 +599,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                _PayMethodPicker(
+                // 备注在输入时，支付方式也收起来让位
+                if (!keyboardOpen) _PayMethodPicker(
                   value: _payMethod,
                   onChanged: (v) {
                     Haptics.tap();

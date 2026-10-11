@@ -238,9 +238,10 @@ class AppTheme {
       ),
       // 顶栏做成**独立的一条彩色条**（用户要求：像微信聊天页顶上那块名字栏 ——
       // 每个页面都要有、而且要和页面内容明确分开）。
-      // 用品牌玉青的深色档打底 + 白字白图标，浅深色两种模式下都读得清。
+      // 颜色用蓝色（用户指定）；底下压一条 1px 暗线做"分界"，
+      // **不用阴影** —— 阴影会让它显得是"浮在屏幕上的一层"（用户明确不喜欢）。
       appBarTheme: AppBarTheme(
-        backgroundColor: p.jadeDeep,
+        backgroundColor: const Color(0xFF2B6CB0),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -254,6 +255,9 @@ class AppTheme {
         ),
         iconTheme: const IconThemeData(color: Colors.white),
         actionsIconTheme: const IconThemeData(color: Colors.white),
+        shape: const Border(
+          bottom: BorderSide(color: Color(0x33000000), width: 1),
+        ),
       ),
       cardTheme: CardThemeData(
         color: p.card,

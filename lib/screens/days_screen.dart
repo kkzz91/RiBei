@@ -506,26 +506,55 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 68,
+      // 固定宽度：位数变了框也不变（用户要求"要统一"）
+      width: 80,
       height: 34,
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(9),
       ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Text(
-          '$days',
-          maxLines: 1,
-          style: const TextStyle(
-            fontSize: 19,
-            height: 1,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
-            color: Colors.white,
+      child: Row(
+        children: [
+          Expanded(
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '$days',
+                  maxLines: 1,
+                  style: const TextStyle(
+                    fontSize: 19,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
+          // 数字和"天"隔开（用户说这样好看）
+          Container(
+            width: 1,
+            height: 16,
+            color: Colors.white.withValues(alpha: 0.45),
+          ),
+          const SizedBox(
+            width: 24,
+            child: Center(
+              child: Text(
+                '天',
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  height: 1,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

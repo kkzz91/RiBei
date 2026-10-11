@@ -411,17 +411,11 @@ class _CalendarPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  // 「分析」放在数字下面 —— 用户明确要求的
-                  Text(
-                    breakdown,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.6,
-                      color: Color(0xB81B1B1B),
-                    ),
-                  ),
+                  // ⚠️ 这里**原本有一行"X 个月 X 天"**（大数字下面的分析）。
+                  // 用户看了之后说"大数字下面那个小的天……有啥意义呀"，让删掉 ——
+                  // 方向和大数已经说清楚了，副行反而抢视线。
+                  // 位置保留成注释：要恢复的话把下面这段放回来即可。
+                  //   Text(breakdown, ...)
                 ],
               ),
             ),

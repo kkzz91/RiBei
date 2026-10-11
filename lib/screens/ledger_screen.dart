@@ -121,7 +121,13 @@ class _LedgerScreenState extends State<LedgerScreen> {
             child: Center(
               child: Text(
                 '共 ${records.length} 笔',
-                style: AppText.label(context),
+                // ⚠️ 顶栏现在是深色底 —— 这里必须用浅色字。
+                // 用 AppText.label() 那种跟随页面底色的深灰，会糊成一团（用户报过）。
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
