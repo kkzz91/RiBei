@@ -760,7 +760,9 @@ class _VerdictBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final color = asMilestone ? const Color(0xFFE08A1E) : const Color(0xFF2E7DD1);
+    // 倒计时用玉青、纪念日用橙 —— 和倒计时列表徽标（`days_screen` 的 `_badgeColor`）
+    // 同一套语义色。用户 v1.6.15："不要蓝的，橙的留着"。
+    final color = asMilestone ? const Color(0xFFE08A1E) : p.jade;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(

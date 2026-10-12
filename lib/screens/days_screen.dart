@@ -251,14 +251,24 @@ class DaysScreen extends StatelessWidget {
   }
 }
 
-/// 数字徽标的配色：**还没到 = 蓝、已经过去 = 橙**。
-/// [deep] 那一档更深，专门给"天"那个小格子用 —— 两段深浅不同看起来才有质感
-/// （用户对着参考图提的："人家那个单位那里颜色不一样，深蓝色和深橙色"）。
-Color _badgeColor(bool past) =>
-    past ? const Color(0xFFE08A1E) : const Color(0xFF2E7DD1);
+/// 数字徽标的配色：**还没到 = 玉青、已经过去 = 橙**。
+///
+/// 用户 v1.6.15："把倒计时那个也换成青色系吧，不要蓝的，橙的留着，统一一点好看"
+/// —— 原来"还没到"用的是硬编码的蓝（0xFF2E7DD1），跟玉青顶栏不搭。
+///
+/// [deep] 那一档更深，专门给「天」那个小格子用 —— 两段深浅不同看起来才有质感
+/// （用户对着参考图提的："人家那个单位那里颜色不一样"）。
+/// 浅色模式取 `jade / jadeDeep`；深色模式整体是浅色底上的两档深绿，
+/// 免得 `jade`（提亮过的那支）配白字太糊。
+Color _badgeColor(AppPalette p, bool past) => past
+    ? const Color(0xFFE08A1E)
+    : (p.isDark ? p.jadeDeep : p.jade);
 
-Color _badgeDeep(bool past) =>
-    past ? const Color(0xFFB0650A) : const Color(0xFF1D5A9E);
+Color _badgeDeep(AppPalette p, bool past) => past
+    ? const Color(0xFFB0650A)
+    : (p.isDark
+          ? Color.lerp(p.jadeDeep, Colors.black, 0.3)!
+          : p.jadeDeep);
 
 // ---------------------------------------------------------------- 头条卡
 
@@ -277,7 +287,7 @@ class _HeadlineCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final color = _badgeColor(row.past);
+    final color = _badgeColor(p, row.past);
 
     return Pressable(
       scale: 0.98,
@@ -418,7 +428,7 @@ class _DayTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final color = _badgeColor(row.past);
+    final color = _badgeColor(p, row.past);
 
     return Padding(
       // 条与条之间留一条缝，**每条仍是自己的独立框**（用户 v1.6.7 明确要过"别连在一起"）
@@ -475,7 +485,7 @@ class _DayTile extends StatelessWidget {
                   ),
                 ),
               ),
-              _Badge(days: row.days, past: row.past),
+              _Badge(days: row.days, past: row.past, palette: p),
             ],
           ),
         ),
@@ -486,13 +496,18 @@ class _DayTile extends StatelessWidget {
 
 /// 彩色数字徽标。**两段式**：数字一段、单位"天"一段，
 /// 单位那一段用**更深一档的同色**（用户："人家那个单位那里颜色不一样，
-/// 深蓝色和深橙色，这样看起来有质感"）。
+/// 这样看起来有质感"）。
 /// 它**撑满整条行高、贴在右边**（用户："弄得跟框一样大、站在右边"）。
 class _Badge extends StatelessWidget {
-  const _Badge({required this.days, required this.past});
+  const _Badge({
+    required this.days,
+    required this.past,
+    required this.palette,
+  });
 
   final int days;
   final bool past;
+  final AppPalette palette;
 
   @override
   Widget build(BuildContext context) {
@@ -502,7 +517,7 @@ class _Badge extends StatelessWidget {
         Container(
           // 数字段：够宽才放得下三四位数（超了由 FittedBox 缩，不会挤成两行）
           width: 60,
-          color: _badgeColor(past),
+          color: _badgeColor(palette, past),
           alignment: Alignment.center,
           child: FittedBox(
             fit: BoxFit.scaleDown,
@@ -522,7 +537,7 @@ class _Badge extends StatelessWidget {
         Container(
           // 「天」这一段再长一点（v1.6.13 是 32，用户这次还要长一些）
           width: 36,
-          color: _badgeDeep(past),
+          color: _badgeDeep(palette, past),
           alignment: Alignment.center,
           child: const Text(
             '天',
