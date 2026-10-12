@@ -169,12 +169,8 @@ class DaysScreen extends StatelessWidget {
     final next = !row.pinned;
 
     if (next) {
-      for (final e in countdowns.events) {
-        if (e.pinned) await countdowns.save(e.copyWith(pinned: false));
-      }
-      for (final m in milestones.items) {
-        if (m.pinned) await milestones.save(m.copyWith(pinned: false));
-      }
+      await countdowns.unpinAll();
+      await milestones.unpinAll();
     }
     if (row.isMilestone) {
       final m = _findMilestone(milestones, row.id);
@@ -463,7 +459,8 @@ class _Badge extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 56,
+          // 数字段：够宽才放得下三四位数（超了由 FittedBox 缩，不会挤成两行）
+          width: 60,
           color: _badgeColor(past),
           alignment: Alignment.center,
           child: FittedBox(
@@ -472,7 +469,7 @@ class _Badge extends StatelessWidget {
               '$days',
               maxLines: 1,
               style: const TextStyle(
-                fontSize: 20,
+                fontSize: 21,
                 height: 1,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
@@ -482,14 +479,15 @@ class _Badge extends StatelessWidget {
           ),
         ),
         Container(
-          width: 26,
+          // 「天」这一段（用户反馈原来 26 宽 / 12.5 号太小、不够好看）
+          width: 32,
           color: _badgeDeep(past),
           alignment: Alignment.center,
           child: const Text(
             '天',
             maxLines: 1,
             style: TextStyle(
-              fontSize: 12.5,
+              fontSize: 14.5,
               height: 1,
               fontWeight: FontWeight.w700,
               color: Colors.white,

@@ -297,11 +297,13 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
           const SizedBox(height: 20),
 
           const _FieldLabel('提醒'),
-          Container(
-            decoration: BoxDecoration(
-              color: p.card,
+          // 用 Material 而不是带底色的 Container：否则 ListTile 的按压水波会被盖掉
+          // （Flutter 会为此发断言，release 下断言没了、表现就是"按下去没反应"）。
+          Material(
+            color: p.card,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: p.line),
+              side: BorderSide(color: p.line),
             ),
             child: SwitchListTile(
               value: _remind,

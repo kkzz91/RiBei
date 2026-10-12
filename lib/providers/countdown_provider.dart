@@ -77,6 +77,17 @@ class CountdownProvider extends ChangeNotifier {
     await load();
   }
 
+  /// 取消**所有**倒计时的置顶（理由同 MilestoneProvider.unpinAll：
+  /// 置顶全局最多一个，长按菜单和编辑页的开关必须守同一条规矩）。
+  Future<void> unpinAll() async {
+    final changed = _events.where((e) => e.pinned && e.id != null).toList();
+    if (changed.isEmpty) return;
+    for (final e in changed) {
+      await _dao.update(e.copyWith(pinned: false));
+    }
+    await load();
+  }
+
   /// 清空全部倒计时，返回删掉的条数。
   ///
   /// 重点是**逐条取消各自的闹钟** —— 不能用「取消所有待推送通知」那种写法，

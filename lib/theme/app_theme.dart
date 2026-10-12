@@ -154,13 +154,12 @@ const AppPalette lightPalette = AppPalette(
   inkFaint: Color(0xFFA29B92),
   line: Color(0xFFEDE8E1),
   outline: Color(0xFFCFC8BF),
-  // ⚠️ 名字还叫 jade（玉青），但**值已经换成蓝色** ——
-  // 用户要求顶栏用蓝色，而整套强调色（按钮 / 选中的 Tab / 结余卡 / 图表）
-  // 必须跟顶栏一致，否则蓝色顶栏配青色卡片显得很脏（他专门提过）。
-  // 改值不改名，省一次全库改名。
-  jade: Color(0xFF2B6CB0),
-  jadeDeep: Color(0xFF1C4B7D),
-  jadeSoft: Color(0xFFE3EDF9),
+  // 品牌玉青。v1.6.9 曾试过改成蓝色（顶栏配蓝），用户实测后觉得"不清新"，
+  // v1.6.13 起**改回青色**：顶栏 / 按钮 / 选中的 Tab / 结余卡 / 图表
+  // 全部走这一套，保持一致（顶栏用其中更深的 jadeDeep）。
+  jade: Color(0xFF1F5E52),
+  jadeDeep: Color(0xFF123F37),
+  jadeSoft: Color(0xFFE2EDE9),
   expense: Color(0xFFC4553D),
   expenseSoft: Color(0xFFF8E7E2),
   income: Color(0xFF2E7D6B),
@@ -181,11 +180,10 @@ const AppPalette darkPalette = AppPalette(
   inkFaint: Color(0xFF6F6862),
   line: Color(0xFF2C2724),
   outline: Color(0xFF3E3833),
-  // 深色模式下用更暗一档的蓝，不然亮蓝顶栏压在深底上很刺眼
-  // （用户反馈"开深色模式顶栏颜色都没变"）
-  jade: Color(0xFF6FA8DC),
-  jadeDeep: Color(0xFF2F5B8A),
-  jadeSoft: Color(0xFF1B2733),
+  // 深色下玉青提亮一档，否则压在近黑底上发闷
+  jade: Color(0xFF52A692),
+  jadeDeep: Color(0xFF2E7565),
+  jadeSoft: Color(0xFF1A2E29),
   expense: Color(0xFFE2846C),
   expenseSoft: Color(0xFF33221D),
   income: Color(0xFF62C4A6),
@@ -244,13 +242,11 @@ class AppTheme {
       ),
       // 顶栏做成**独立的一条彩色条**（用户要求：像微信聊天页顶上那块名字栏 ——
       // 每个页面都要有、而且要和页面内容明确分开）。
-      // 颜色用蓝色（用户指定）；底下压一条 1px 暗线做"分界"，
-      // **不用阴影** —— 阴影会让它显得是"浮在屏幕上的一层"（用户明确不喜欢）。
+      // 颜色 = 品牌玉青的深色档（`p.jadeDeep`，浅深色两种模式各自取各自的档，
+      // 不用硬编码 —— 硬编码过一次蓝色，用户觉得不如青色清新，v1.6.13 改回）；
+      // 底下压一条 1px 暗线做"分界"，**不用阴影** —— 阴影会让它显得是"浮在屏幕上的一层"（用户明确不喜欢）。
       appBarTheme: AppBarTheme(
-        // 深色模式下用暗一档的蓝，不然亮蓝顶栏压深底很刺眼
-        backgroundColor: p.isDark
-            ? const Color(0xFF1F4E7A)
-            : const Color(0xFF2B6CB0),
+        backgroundColor: p.jadeDeep,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,

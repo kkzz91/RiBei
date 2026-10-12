@@ -44,4 +44,18 @@ class MilestoneProvider extends ChangeNotifier {
     await _dao.delete(id);
     await load();
   }
+
+  /// 取消**所有**纪念日的置顶。
+  ///
+  /// 「置顶是全局最多一个」（列表里只有头条卡那一张会放大，见 DaysScreen），
+  /// 所以任何一次"置顶"之前，都得先把别的都取消掉 ——
+  /// 长按菜单和编辑页那个置顶开关**必须守同一条规矩**，否则两处行为会打架。
+  Future<void> unpinAll() async {
+    final changed = _items.where((m) => m.pinned && m.id != null).toList();
+    if (changed.isEmpty) return;
+    for (final m in changed) {
+      await _dao.update(m.copyWith(pinned: false));
+    }
+    await load();
+  }
 }

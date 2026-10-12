@@ -263,6 +263,16 @@ class _AddDayScreenState extends State<AddDayScreen> {
 
     final countdowns = context.read<CountdownProvider>();
     final milestones = context.read<MilestoneProvider>();
+
+    // 置顶是"全局最多一个"（列表里只有头条卡那一张会放大）——
+    // 这里开了置顶，就先把别的都取消掉，**和长按菜单那条路径守同一条规矩**。
+    // 之前只有长按菜单做了互斥、这个开关没做，于是"长按置顶会顶掉上一个、
+    // 但在编辑页却能同时置顶好几个"，用户发现两处行为对不上。
+    if (_pinned) {
+      await countdowns.unpinAll();
+      await milestones.unpinAll();
+    }
+
     final now = DateTime.now();
     final asMilestone = _willBeMilestone;
 
@@ -461,11 +471,14 @@ class _AddDayScreenState extends State<AddDayScreen> {
             ),
             const SizedBox(height: 18),
             const _Label('提醒'),
-            Container(
-              decoration: BoxDecoration(
-                color: p.card,
+            // 用 Material 而不是 Container：ListTile 的按压水波是画在**最近的 Material** 上的，
+            // 中间夹一层"带底色的 Container"会把水波盖掉（Flutter 会为此发断言，
+            // release 下断言被关掉、表现就成了"这一行按下去没任何反应"）。
+            Material(
+              color: p.card,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: p.line),
+                side: BorderSide(color: p.line),
               ),
               child: Column(
                 children: [
@@ -536,11 +549,12 @@ class _AddDayScreenState extends State<AddDayScreen> {
             onChanged: (v) => setState(() => _digitFont = v),
           ),
           const SizedBox(height: 18),
-          Container(
-            decoration: BoxDecoration(
-              color: p.card,
+          // 同上：必须是 Material，不能是带底色的 Container（否则按压水波不可见）
+          Material(
+            color: p.card,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: p.line),
+              side: BorderSide(color: p.line),
             ),
             child: SwitchListTile(
               value: _pinned,
