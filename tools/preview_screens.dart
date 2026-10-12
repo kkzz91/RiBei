@@ -8,21 +8,26 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:ribei/data/countdown_dao.dart';
 import 'package:ribei/data/milestone_dao.dart';
+import 'package:ribei/data/todo_dao.dart';
 import 'package:ribei/data/transaction_dao.dart';
 import 'package:ribei/models/budget.dart';
 import 'package:ribei/models/countdown_event.dart';
 import 'package:ribei/models/milestone.dart';
 import 'package:ribei/models/quick_entry.dart';
+import 'package:ribei/models/todo_item.dart';
 import 'package:ribei/models/transaction_record.dart';
 import 'package:ribei/providers/countdown_provider.dart';
 import 'package:ribei/providers/ledger_provider.dart';
 import 'package:ribei/providers/milestone_provider.dart';
 import 'package:ribei/providers/settings_provider.dart';
+import 'package:ribei/providers/todo_provider.dart';
 import 'package:ribei/screens/add_day_screen.dart';
 import 'package:ribei/screens/add_transaction_screen.dart';
+import 'package:ribei/screens/daily_chart_screen.dart';
 import 'package:ribei/screens/days_screen.dart';
 import 'package:ribei/screens/ledger_screen.dart';
 import 'package:ribei/screens/share_bill_screen.dart';
+import 'package:ribei/screens/todo_screen.dart';
 import 'package:ribei/theme/app_theme.dart';
 import 'package:ribei/utils/categories.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -134,43 +139,74 @@ Future<MilestoneProvider> _milestones(DateTime now) async {
   return p;
 }
 
+/// 账本用的样例账目（账本页和"每天花了多少"大图共用）
+List<TransactionRecord> _ledgerRecords(DateTime now) => <TransactionRecord>[
+  TransactionRecord(
+    id: 1,
+    amount: 15,
+    type: TxType.expense,
+    category: '餐饮',
+    note: '午饭',
+    date: now,
+    payMethod: PayMethod.wechat,
+    createdAt: now,
+  ),
+  TransactionRecord(
+    id: 2,
+    amount: 200,
+    type: TxType.expense,
+    category: '购物',
+    note: '日用品',
+    date: now,
+    payMethod: PayMethod.alipay,
+    createdAt: now,
+  ),
+  TransactionRecord(
+    id: 3,
+    amount: 8000,
+    type: TxType.income,
+    category: '工资',
+    date: now,
+    payMethod: PayMethod.card,
+    createdAt: now,
+  ),
+];
+
 Future<LedgerProvider> _ledger(DateTime now) async {
-  final p = LedgerProvider(
-    dao: _FakeTxDao(<TransactionRecord>[
-      TransactionRecord(
-        id: 1,
-        amount: 15,
-        type: TxType.expense,
-        category: '餐饮',
-        note: '午饭',
-        date: now,
-        payMethod: PayMethod.wechat,
-        createdAt: now,
-      ),
-      TransactionRecord(
-        id: 2,
-        amount: 200,
-        type: TxType.expense,
-        category: '购物',
-        note: '日用品',
-        date: now,
-        payMethod: PayMethod.alipay,
-        createdAt: now,
-      ),
-      TransactionRecord(
-        id: 3,
-        amount: 8000,
-        type: TxType.income,
-        category: '工资',
-        date: now,
-        payMethod: PayMethod.card,
-        createdAt: now,
-      ),
-    ]),
-  );
+  final p = LedgerProvider(dao: _FakeTxDao(_ledgerRecords(now)));
   await p.load();
   return p;
 }
+
+/// 待办用的样例（多选模式下看一眼）
+class _FakeTodoDao extends TodoDao {
+  _FakeTodoDao(this.items);
+  final List<TodoItem> items;
+  @override
+  Future<List<TodoItem>> all() async => items;
+}
+
+List<TodoItem> _todoSamples(DateTime now) => <TodoItem>[
+  TodoItem(
+    id: 1,
+    title: '交房租',
+    dueAt: now.add(const Duration(hours: 3)),
+    priority: TodoPriority.high,
+    createdAt: now,
+  ),
+  TodoItem(
+    id: 2,
+    title: '买猫粮',
+    dueAt: now.add(const Duration(days: 1)),
+    createdAt: now,
+  ),
+  TodoItem(
+    id: 3,
+    title: '给妈妈打电话',
+    dueAt: now.subtract(const Duration(days: 1)),
+    createdAt: now,
+  ),
+];
 
 // ------------------------------------------------------------------ 出图
 
@@ -313,33 +349,133 @@ void main() {
     );
   });
 
-  testWidgets('账本', (tester) async {
-    // ignore: invalid_use_of_visible_for_testing_member
-    SharedPreferences.setMockInitialValues(<String, Object>{});
+  // 预算卡的几档颜色各出一张（同一份账，换不同的预算方案）
+  const budgetCases = <String, BudgetPlan>{
+    'ledger': BudgetPlan(total: 3000, tiers: <double>[1000, 2000]),
+    'ledger_orange': BudgetPlan(total: 300, tiers: <double>[100, 200]),
+    'ledger_red': BudgetPlan(total: 200, tiers: <double>[100, 300]),
+    'ledger_black': BudgetPlan(total: 200, tiers: <double>[100, 210]),
+  };
+  for (final entry in budgetCases.entries) {
+    testWidgets('账本（预算档位 ${entry.key}）', (tester) async {
+      // ignore: invalid_use_of_visible_for_testing_member
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final now = DateTime.now();
+      final settings = SettingsProvider();
+      await settings.load();
+      await settings.setBudget(entry.value);
+      await shoot(
+        tester,
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<LedgerProvider>.value(
+              value: await _ledger(now),
+            ),
+            ChangeNotifierProvider<SettingsProvider>.value(value: settings),
+          ],
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            home: const LedgerScreen(),
+          ),
+        ),
+        entry.key,
+      );
+    });
+  }
+
+  testWidgets('账本：每天花了多少（大图）', (tester) async {
     final now = DateTime.now();
-    final settings = SettingsProvider();
-    await settings.load();
-    // 设一个月度预算 + 两条红线，好看清预算卡长什么样
-    await settings.setBudget(
-      const BudgetPlan(total: 3000, tiers: <double>[1000, 2000]),
-    );
     await shoot(
       tester,
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        home: DailyChartScreen(month: now, records: _ledgerRecords(now)),
+      ),
+      'daily_chart',
+    );
+  });
+
+  testWidgets('倒计时：长按进入多选', (tester) async {
+    final now = DateTime.now();
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    await tester.pumpWidget(
       MultiProvider(
         providers: [
-          ChangeNotifierProvider<LedgerProvider>.value(
-            value: await _ledger(now),
+          ChangeNotifierProvider<CountdownProvider>.value(
+            value: await _countdowns(now),
           ),
-          ChangeNotifierProvider<SettingsProvider>.value(value: settings),
+          ChangeNotifierProvider<MilestoneProvider>.value(
+            value: await _milestones(now),
+          ),
         ],
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
-          home: const LedgerScreen(),
+          home: const DaysScreen(),
         ),
       ),
-      'ledger',
     );
+    await tester.pumpAndSettle();
+    // 长按一行 → 进多选，再点另一行凑成"已选 2 项"
+    await tester.longPress(find.text('发工资'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('项目上线'));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('preview_out/days_selecting.png'),
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('待办：长按进入多选', (tester) async {
+    final now = DateTime.now();
+    final todos = TodoProvider(dao: _FakeTodoDao(_todoSamples(now)));
+    await todos.load();
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    await tester.pumpWidget(
+      ChangeNotifierProvider<TodoProvider>.value(
+        value: todos,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          home: const TodoScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('preview_out/todo_plain.png'),
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('待办：长按进入多选', (tester) async {
+    final now = DateTime.now();
+    final todos = TodoProvider(dao: _FakeTodoDao(_todoSamples(now)));
+    await todos.load();
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    await tester.pumpWidget(
+      ChangeNotifierProvider<TodoProvider>.value(
+        value: todos,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          home: const TodoScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('交房租'));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('preview_out/todo_selecting.png'),
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('添加日子（编辑一个纪念日）', (tester) async {

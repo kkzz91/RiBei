@@ -23,6 +23,70 @@ class TodoScreen extends StatefulWidget {
 class _TodoScreenState extends State<TodoScreen> {
   bool _showCompleted = false;
 
+  /// 多选模式。用户 v1.6.17："长按了就多选，多选之后再选择删除"——
+  /// 和倒计时页同一套（长按 = 进多选，不再弹单项确认框），同步做的。
+  bool _selecting = false;
+  final Set<int> _selected = <int>{};
+
+  void _enterSelection(TodoItem todo) {
+    final id = todo.id;
+    if (id == null) return;
+    Haptics.warn();
+    setState(() {
+      _selecting = true;
+      _selected.add(id);
+    });
+  }
+
+  void _exitSelection() {
+    setState(() {
+      _selecting = false;
+      _selected.clear();
+    });
+  }
+
+  void _toggleSelected(TodoItem todo) {
+    final id = todo.id;
+    if (id == null) return;
+    Haptics.tap();
+    setState(() {
+      if (!_selected.remove(id)) _selected.add(id);
+    });
+  }
+
+  /// 把选中的一次性删掉（提醒也跟着撤）
+  Future<void> _deleteSelected(List<TodoItem> all) async {
+    final targets = all.where((t) => _selected.contains(t.id)).toList();
+    if (targets.isEmpty) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('删除这 ${targets.length} 条？'),
+        content: const Text('删掉后就没有了，还没响的提醒也会一并取消。'),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: ctx.palette.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final provider = context.read<TodoProvider>();
+    for (final t in targets) {
+      await provider.remove(t.id!);
+    }
+    if (!mounted) return;
+    AppToast.show(context, '已删除 ${targets.length} 条');
+    _exitSelection();
+  }
+
   Future<void> _openEditor([TodoItem? existing]) => Navigator.of(context).push(
     MaterialPageRoute<void>(builder: (_) => AddTodoScreen(existing: existing)),
   );
@@ -75,31 +139,6 @@ class _TodoScreenState extends State<TodoScreen> {
     );
   }
 
-  Future<void> _confirmDelete(TodoItem todo) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('删除这条待办？'),
-        content: Text('「${todo.title}」删除后，它的提醒也会一并取消。'),
-        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: ctx.palette.danger),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true && mounted) {
-      await context.read<TodoProvider>().remove(todo.id!);
-    }
-  }
-
   Future<void> _clearCompleted(List<TodoItem> completed) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -134,19 +173,54 @@ class _TodoScreenState extends State<TodoScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('待办'),
-        actions: [
-          if (provider.pending.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Center(
-                child: Text(
-                  '${provider.pending.length} 项待完成',
-                  style: AppText.label(context),
+        leading: _selecting
+            ? IconButton(
+                tooltip: '取消',
+                icon: const Icon(Icons.close),
+                onPressed: _exitSelection,
+              )
+            : null,
+        title: Text(_selecting ? '已选 ${_selected.length} 项' : '待办'),
+        actions: _selecting
+            ? [
+                if (_selected.length == 1)
+                  IconButton(
+                    tooltip: '编辑',
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () {
+                      final only = provider.pending
+                          .followedBy(completed)
+                          .firstWhere((t) => t.id == _selected.first);
+                      _exitSelection();
+                      _openEditor(only);
+                    },
+                  ),
+                IconButton(
+                  tooltip: '删除',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: _selected.isEmpty
+                      ? null
+                      : () => _deleteSelected(
+                          <TodoItem>[...provider.pending, ...completed],
+                        ),
                 ),
-              ),
-            ),
-        ],
+                const SizedBox(width: 4),
+              ]
+            : [
+                if (provider.pending.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Center(
+                      child: Text(
+                        '${provider.pending.length} 项待完成',
+                        // 顶栏是深色条，这行字必须硬编码白色（红线 29 ③）
+                        style: AppText.label(
+                          context,
+                        ).copyWith(color: Colors.white),
+                      ),
+                    ),
+                  ),
+              ],
       ),
       floatingActionButton: Pressable(
         scale: 0.94,
@@ -198,9 +272,15 @@ class _TodoScreenState extends State<TodoScreen> {
                   for (final todo in group.items)
                     _TodoTile(
                       todo: todo,
-                      onTap: () => _openEditor(todo),
+                      selecting: _selecting,
+                      selected: _selected.contains(todo.id),
+                      onTap: () => _selecting
+                          ? _toggleSelected(todo)
+                          : _openEditor(todo),
                       onToggle: (position) => _toggle(todo, position),
-                      onLongPress: () => _confirmDelete(todo),
+                      onLongPress: () => _selecting
+                          ? _toggleSelected(todo)
+                          : _enterSelection(todo),
                     ),
                 ],
                 if (completed.isNotEmpty) ...[
@@ -242,9 +322,15 @@ class _TodoScreenState extends State<TodoScreen> {
                     for (final todo in completed)
                       _TodoTile(
                         todo: todo,
-                        onTap: () => _openEditor(todo),
+                        selecting: _selecting,
+                        selected: _selected.contains(todo.id),
+                        onTap: () => _selecting
+                            ? _toggleSelected(todo)
+                            : _openEditor(todo),
                         onToggle: (position) => _toggle(todo, position),
-                        onLongPress: () => _confirmDelete(todo),
+                        onLongPress: () => _selecting
+                            ? _toggleSelected(todo)
+                            : _enterSelection(todo),
                       ),
                 ],
               ],
@@ -306,6 +392,8 @@ class _TodoTile extends StatelessWidget {
     required this.onTap,
     required this.onToggle,
     required this.onLongPress,
+    this.selecting = false,
+    this.selected = false,
   });
 
   final TodoItem todo;
@@ -315,6 +403,10 @@ class _TodoTile extends StatelessWidget {
   final ValueChanged<Offset> onToggle;
 
   final VoidCallback onLongPress;
+
+  /// 多选模式（见 `_TodoScreenState`）
+  final bool selecting;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -337,18 +429,39 @@ class _TodoTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           onLongPress: onLongPress,
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 左侧优先级色条
-                Container(width: 4, color: _priorityColor(p, todo.priority)),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+          // 左侧那条优先级色条改用**左边框**画。
+          //
+          // 原来是 `IntrinsicHeight(Row(stretch)[Container(width:4), Padding(Row(Expanded))]))`，
+          // 那种写法在"行里还有 Expanded"时会抛
+          // "RenderFlex children have non-zero flex but incoming width constraints are unbounded"
+          // —— IntrinsicHeight 量内在尺寸时会给子节点传无界宽度，而 Expanded 要的是有界宽度。
+          // 用边框画，高度自动跟着卡片走，少一层脆弱的结构（v1.6.17 加预览时暴露的）。
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: _priorityColor(p, todo.priority),
+                  width: 4,
+                ),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _CheckCircle(done: todo.done, onTap: onToggle),
+                      // 多选模式下，左边那个"完成勾"的位置换成选择圈
+                      // （不然两个圈会让人分不清哪个是勾选、哪个是完成）
+                      if (selecting)
+                        Icon(
+                          selected
+                              ? Icons.check_circle
+                              : Icons.circle_outlined,
+                          size: 24,
+                          color: selected ? p.jade : p.inkFaint,
+                        )
+                      else
+                        _CheckCircle(done: todo.done, onTap: onToggle),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -444,11 +557,9 @@ class _TodoTile extends StatelessWidget {
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
     );
   }
 

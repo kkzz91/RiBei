@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../models/budget.dart';
 import '../models/quick_entry.dart';
 import '../models/transaction_record.dart';
 import '../providers/ledger_provider.dart';
@@ -13,6 +14,7 @@ import '../utils/haptics.dart';
 import '../utils/categories.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_toast.dart';
+import '../widgets/budget_card.dart';
 import '../widgets/pay_tag.dart';
 import '../widgets/pressable.dart';
 
@@ -220,7 +222,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       payMethod: _payMethod,
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
     );
-    await context.read<LedgerProvider>().save(record);
+    final ledger = context.read<LedgerProvider>();
+    // 记之前先记下"本月花到哪一档了"，记完再比一次 —— 见 _warnIfBudgetCrossed
+    final month = DateTime(record.date.year, record.date.month);
+    final spentBefore = ledger.expenseOf(month);
+    await ledger.save(record);
+    final spentAfter = ledger.expenseOf(month);
 
     if (!mounted) return;
     setState(() => _saving = false);
@@ -238,6 +245,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         context,
         '已记下 $_batchCount 笔 · $_category ${formatMoney(value)}',
       );
+      _warnIfBudgetCrossed(spentBefore, spentAfter);
       return;
     }
 
@@ -246,7 +254,41 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       context,
       _isEditing ? '已更新' : '已记下 · $_category ${formatMoney(value)}',
     );
+    // 顶过一档就直接盖掉上面那条提示（它更重要）
+    _warnIfBudgetCrossed(spentBefore, spentAfter);
     Navigator.of(context).pop();
+  }
+
+  /// 记完一笔之后查一下有没有把「本月预算」顶过一档，有就弹提醒。
+  ///
+  /// 用户 v1.6.17："超过红线怎么没有弹窗提醒啊？像那个待办和倒计时那种提醒"。
+  /// 档位（绿/黄/橙/红/黑）见 `BudgetStatus.level`。
+  ///
+  /// ⚠️ 比的是**档位**而不是"跨过几条红线"：黑档的 `crossed` 可能和第 2 条一样，
+  /// 只有 `level` 变大才说明"更严重了"。
+  void _warnIfBudgetCrossed(double before, double after) {
+    if (!mounted) return;
+    final plan = context.read<SettingsProvider>().budget;
+    if (!plan.hasPlan) return;
+    final was = evaluateBudget(spent: before, plan: plan);
+    final now = evaluateBudget(spent: after, plan: plan);
+    if (now.level <= was.level) return;
+
+    final text = switch (now.level) {
+      4 => '连你设的那条底线都破了 · 本月已花 ${formatMoney(now.spent)}',
+      3 => now.overBudget
+          ? '本月已超预算 ${formatMoney(-now.remaining)}'
+          : '已过第 3 条红线 · 本月 ${formatMoney(now.spent)}',
+      _ => '已过第 ${now.crossed} 条红线 · 本月 ${formatMoney(now.spent)}',
+    };
+    AppToast.show(
+      context,
+      text,
+      icon: now.level >= 3
+          ? Icons.error_outline
+          : Icons.warning_amber_rounded,
+      tint: tierBarColor(context.palette, now.level),
+    );
   }
 
   /// 系统键盘输入金额时，把用户敲进来的内容清洗成合法金额文本
@@ -274,6 +316,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final ledger = context.read<LedgerProvider>();
     final settings = context.read<SettingsProvider>();
     final now = DateTime.now();
+    final month = DateTime(now.year, now.month);
+    final spentBefore = ledger.expenseOf(month);
 
     await ledger.save(
       TransactionRecord(
@@ -286,6 +330,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         createdAt: now,
       ),
     );
+    final spentAfter = ledger.expenseOf(month);
     // 用过的提到最前，下次更好找
     await settings.touchQuickEntry(entry);
 
@@ -303,6 +348,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         context,
         '已记下 $_batchCount 笔 · ${entry.category} ${formatMoney(entry.amount)}',
       );
+      _warnIfBudgetCrossed(spentBefore, spentAfter);
       return;
     }
 
@@ -310,6 +356,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       context,
       '已记账 · ${entry.category} ${formatMoney(entry.amount)}',
     );
+    _warnIfBudgetCrossed(spentBefore, spentAfter);
     Navigator.of(context).pop();
   }
 

@@ -267,12 +267,17 @@ class AppTheme {
           bottom: BorderSide(color: Color(0x33000000), width: 1),
         ),
       ),
-      // 顶栏上那些按钮：给一层**半透明圆底**，看起来才像个"按键"（用户要求）。
-      // ⚠️ 只设底色，**不动前景色** —— 前景由 appBarTheme 给白色；
+      // 顶栏上那些按钮：给一层**半透明底**，看起来才像个"按键"（用户要求）。
+      // 用户 v1.6.17：顶栏缩到 48 之后**圆形底显得贴在顶栏上、有点丑** →
+      // 改成**圆角长方形**（10 的圆角），视觉上更"贴合"这条横条。
+      // ⚠️ 只设底色和形状，**不动前景色** —— 前景由 appBarTheme 给白色；
       // 如果这里也把前景设成白，正文里那些 IconButton 就全废了。
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
           backgroundColor: Colors.white.withValues(alpha: 0.16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       ),
       cardTheme: CardThemeData(

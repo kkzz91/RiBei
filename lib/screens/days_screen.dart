@@ -9,6 +9,7 @@ import '../providers/milestone_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../utils/haptics.dart';
+import '../widgets/app_toast.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/pressable.dart';
 import '../widgets/reminder_status_banner.dart';
@@ -26,8 +27,85 @@ import 'milestone_detail_screen.dart';
 ///
 /// 倒计时和纪念日在数据上仍是两张表（字段差别太大），
 /// 合并只发生在**显示层**：这里把它们统一成 [DayRow] 再一起排序。
-class DaysScreen extends StatelessWidget {
+class DaysScreen extends StatefulWidget {
   const DaysScreen({super.key});
+
+  @override
+  State<DaysScreen> createState() => _DaysScreenState();
+}
+
+class _DaysScreenState extends State<DaysScreen> {
+  /// 多选模式。
+  /// 用户 v1.6.17："删除不能一次删很多，干脆学微信那种：长按了就多选，
+  /// 多选之后再选择删除"。**长按就进多选**（不再弹那个 3 项菜单），
+  /// 编辑走"点一条 → 详情 → 编辑"，置顶在多选模式下只选一条时也能用。
+  bool _selecting = false;
+
+  /// 选中的行。倒计时和纪念日两张表的 id 可能撞车，所以带前缀区分。
+  final Set<String> _selected = <String>{};
+
+  static String _keyOf(DayRow row) => '${row.isMilestone ? 'm' : 'c'}${row.id}';
+
+  void _enterSelection(DayRow row) {
+    Haptics.warn();
+    setState(() {
+      _selecting = true;
+      _selected.add(_keyOf(row));
+    });
+  }
+
+  void _exitSelection() {
+    setState(() {
+      _selecting = false;
+      _selected.clear();
+    });
+  }
+
+  void _toggleSelected(DayRow row) {
+    Haptics.tap();
+    setState(() {
+      final key = _keyOf(row);
+      if (!_selected.remove(key)) _selected.add(key);
+    });
+  }
+
+  /// 把选中的那些一次性删掉（各自的提醒也会跟着撤）
+  Future<void> _deleteSelected(List<DayRow> rows) async {
+    final targets = rows.where((r) => _selected.contains(_keyOf(r))).toList();
+    if (targets.isEmpty) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('删除这 ${targets.length} 项？'),
+        content: const Text('删掉后就没有了，倒计时已排定的提醒也会一并取消。'),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: ctx.palette.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final countdowns = context.read<CountdownProvider>();
+    final milestones = context.read<MilestoneProvider>();
+    for (final r in targets) {
+      if (r.isMilestone) {
+        await milestones.remove(r.id);
+      } else {
+        await countdowns.remove(r.id);
+      }
+    }
+    if (!mounted) return;
+    AppToast.show(context, '已删除 ${targets.length} 项');
+    _exitSelection();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,16 +120,60 @@ class DaysScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        // 用户要求：这一页顶栏就写「倒计时」，不要那个英文品牌
-        title: const Text('倒计时'),
-        actions: [
-          IconButton(
-            tooltip: '新建',
-            icon: const Icon(Icons.add_circle_outline, size: 26),
-            onPressed: () => _openAdd(context),
-          ),
-          const SizedBox(width: 4),
-        ],
+        // 多选模式下左边是"取消"、标题变成"已选 N 项"（微信那套）
+        leading: _selecting
+            ? IconButton(
+                tooltip: '取消',
+                icon: const Icon(Icons.close),
+                onPressed: _exitSelection,
+              )
+            : null,
+        title: Text(_selecting ? '已选 ${_selected.length} 项' : '倒计时'),
+        actions: _selecting
+            ? [
+                // 只选了一条时，顺手给"编辑 / 置顶"两个快捷动作
+                // （长按现在直接进多选，不再弹那个 3 项菜单了）
+                if (_selected.length == 1) ...[
+                  IconButton(
+                    tooltip: '编辑',
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () {
+                      final only = rows.firstWhere(
+                        (r) => _keyOf(r) == _selected.first,
+                      );
+                      _exitSelection();
+                      _edit(context, only);
+                    },
+                  ),
+                  IconButton(
+                    tooltip: '置顶',
+                    icon: const Icon(Icons.push_pin_outlined),
+                    onPressed: () {
+                      final only = rows.firstWhere(
+                        (r) => _keyOf(r) == _selected.first,
+                      );
+                      _togglePin(context, only);
+                      _exitSelection();
+                    },
+                  ),
+                ],
+                IconButton(
+                  tooltip: '删除',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: _selected.isEmpty
+                      ? null
+                      : () => _deleteSelected(rows),
+                ),
+                const SizedBox(width: 4),
+              ]
+            : [
+                IconButton(
+                  tooltip: '新建',
+                  icon: const Icon(Icons.add_circle_outline, size: 26),
+                  onPressed: () => _openAdd(context),
+                ),
+                const SizedBox(width: 4),
+              ],
       ),
       body: !ready
           ? const SizedBox.shrink()
@@ -75,8 +197,14 @@ class DaysScreen extends StatelessWidget {
                 if (featured != null) ...[
                   _HeadlineCard(
                     row: featured,
-                    onTap: () => _openDetail(context, featured),
-                    onLongPress: () => _rowActions(context, featured),
+                    selecting: _selecting,
+                    selected: _selected.contains(_keyOf(featured)),
+                    onTap: () => _selecting
+                        ? _toggleSelected(featured)
+                        : _openDetail(context, featured),
+                    onLongPress: () => _selecting
+                        ? _toggleSelected(featured)
+                        : _enterSelection(featured),
                   ),
                   const SizedBox(height: 14),
                 ],
@@ -84,8 +212,13 @@ class DaysScreen extends StatelessWidget {
                 for (final r in rest)
                   _DayTile(
                     row: r,
-                    onTap: () => _openDetail(context, r),
-                    onLongPress: () => _rowActions(context, r),
+                    selecting: _selecting,
+                    selected: _selected.contains(_keyOf(r)),
+                    onTap: () => _selecting
+                        ? _toggleSelected(r)
+                        : _openDetail(context, r),
+                    onLongPress: () =>
+                        _selecting ? _toggleSelected(r) : _enterSelection(r),
                   ),
               ],
             ),
@@ -112,60 +245,6 @@ class DaysScreen extends StatelessWidget {
             : CountdownDetailScreen(countdownId: row.id),
       ),
     );
-  }
-
-  /// 长按一条：置顶 / 编辑 / 删除
-  Future<void> _rowActions(BuildContext context, DayRow row) async {
-    Haptics.warn();
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) {
-        final p = ctx.palette;
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(row.title, style: AppText.sectionTitle(ctx)),
-                ),
-              ),
-              ListTile(
-                leading: Icon(
-                  row.pinned ? Icons.push_pin_outlined : Icons.push_pin,
-                ),
-                title: Text(row.pinned ? '取消置顶' : '置顶到最上面'),
-                onTap: () => Navigator.pop(ctx, 'pin'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.edit_outlined),
-                title: const Text('编辑'),
-                onTap: () => Navigator.pop(ctx, 'edit'),
-              ),
-              ListTile(
-                leading: Icon(Icons.delete_outline, color: p.danger),
-                title: Text('删除', style: TextStyle(color: p.danger)),
-                onTap: () => Navigator.pop(ctx, 'delete'),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
-    );
-    if (action == null || !context.mounted) return;
-
-    switch (action) {
-      case 'pin':
-        await _togglePin(context, row);
-      case 'edit':
-        await _edit(context, row);
-      case 'delete':
-        await _confirmDelete(context, row);
-    }
   }
 
   /// 置顶是"**全局最多一个**"：先把它自己那类里的都取消，再置顶这一个。
@@ -201,38 +280,6 @@ class DaysScreen extends StatelessWidget {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => AddDayScreen(countdown: e)),
       );
-    }
-  }
-
-  Future<void> _confirmDelete(BuildContext context, DayRow row) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('删除「${row.title}」？'),
-        content: Text(
-          row.isMilestone
-              ? '删掉后就没有了。'
-              : '删除后，已排定的提醒也会一并取消。',
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: ctx.palette.danger),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !context.mounted) return;
-    if (row.isMilestone) {
-      await context.read<MilestoneProvider>().remove(row.id);
-    } else {
-      await context.read<CountdownProvider>().remove(row.id);
     }
   }
 
@@ -278,11 +325,17 @@ class _HeadlineCard extends StatelessWidget {
     required this.row,
     required this.onTap,
     required this.onLongPress,
+    this.selecting = false,
+    this.selected = false,
   });
 
   final DayRow row;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+
+  /// 多选模式（见 `_DaysScreenState`）
+  final bool selecting;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -307,6 +360,14 @@ class _HeadlineCard extends StatelessWidget {
           ),
           child: Row(
             children: [
+              if (selecting) ...[
+                Icon(
+                  selected ? Icons.check_circle : Icons.circle_outlined,
+                  size: 22,
+                  color: selected ? p.jade : p.inkFaint,
+                ),
+                const SizedBox(width: 10),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,11 +480,17 @@ class _DayTile extends StatelessWidget {
     required this.row,
     required this.onTap,
     required this.onLongPress,
+    this.selecting = false,
+    this.selected = false,
   });
 
   final DayRow row;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+
+  /// 多选模式（见 `_DaysScreenState`）
+  final bool selecting;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -444,12 +511,21 @@ class _DayTile extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: p.card,
-            border: Border.all(color: p.line),
+            border: Border.all(color: selecting && selected ? p.jade : p.line),
           ),
           child: Row(
             // 让右边的徽标**撑满整条行高**（用户："弄得跟框一样大、站在右边"）
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (selecting)
+                Padding(
+                  padding: const EdgeInsets.only(left: 12, right: 2),
+                  child: Icon(
+                    selected ? Icons.check_circle : Icons.circle_outlined,
+                    size: 20,
+                    color: selected ? p.jade : p.inkFaint,
+                  ),
+                ),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
