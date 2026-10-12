@@ -14,10 +14,19 @@ import 'milestone_pattern.dart';
 ///
 /// 纪念日和倒计时共用这一个 —— 两边的主题本来就是同一套（`MilestoneTheme`）。
 class ThemePicker extends StatefulWidget {
-  const ThemePicker({super.key, required this.value, required this.onChanged});
+  const ThemePicker({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.flat = false,
+  });
 
   final int value;
   final ValueChanged<int> onChanged;
+
+  /// 去掉自己的卡片外框与左右内边距，好塞进"记事本"那种整页列表里当一行
+  /// （见 `add_day_screen` 的 `_NoteGroup`）。默认 false = 自己就是一个卡片。
+  final bool flat;
 
   @override
   State<ThemePicker> createState() => _ThemePickerState();
@@ -39,12 +48,19 @@ class _ThemePickerState extends State<ThemePicker> {
           onTap: () => setState(() => _open = !_open),
           behavior: HitTestBehavior.opaque,
           child: Container(
-            padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
-            decoration: BoxDecoration(
-              color: p.card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: p.line),
-            ),
+            padding: widget.flat
+                ? const EdgeInsets.fromLTRB(16, 8, 16, 8)
+                : const EdgeInsets.fromLTRB(10, 10, 12, 10),
+            constraints: widget.flat
+                ? const BoxConstraints(minHeight: 52)
+                : null,
+            decoration: widget.flat
+                ? null
+                : BoxDecoration(
+                    color: p.card,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: p.line),
+                  ),
             child: Row(
               children: [
                 ClipRRect(

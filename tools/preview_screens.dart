@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:ribei/data/countdown_dao.dart';
 import 'package:ribei/data/milestone_dao.dart';
 import 'package:ribei/data/transaction_dao.dart';
+import 'package:ribei/models/budget.dart';
 import 'package:ribei/models/countdown_event.dart';
 import 'package:ribei/models/milestone.dart';
 import 'package:ribei/models/quick_entry.dart';
@@ -17,8 +18,10 @@ import 'package:ribei/providers/countdown_provider.dart';
 import 'package:ribei/providers/ledger_provider.dart';
 import 'package:ribei/providers/milestone_provider.dart';
 import 'package:ribei/providers/settings_provider.dart';
+import 'package:ribei/screens/add_day_screen.dart';
 import 'package:ribei/screens/add_transaction_screen.dart';
 import 'package:ribei/screens/days_screen.dart';
+import 'package:ribei/screens/ledger_screen.dart';
 import 'package:ribei/screens/share_bill_screen.dart';
 import 'package:ribei/theme/app_theme.dart';
 import 'package:ribei/utils/categories.dart';
@@ -196,9 +199,10 @@ void main() {
   Future<void> shoot(
     WidgetTester tester,
     Widget app,
-    String name,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(390, 844));
+    String name, {
+    Size size = const Size(390, 844),
+  }) async {
+    await tester.binding.setSurfaceSize(size);
     await tester.pumpWidget(app);
     // 有些部件（如 ReminderStatusBanner）会去问系统通知权限，测试环境没有这个插件、
     // 必然抛 LateInitializationError。它在**首帧构建时**就抛，所以这里先把这些
@@ -264,20 +268,109 @@ void main() {
         payMethod: PayMethod.wechat,
       ),
     );
+    final ledger = await _ledger(now);
+    Widget app() => MultiProvider(
+      providers: [
+        ChangeNotifierProvider<LedgerProvider>.value(value: ledger),
+        ChangeNotifierProvider<SettingsProvider>.value(value: settings),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        home: const AddTransactionScreen(),
+      ),
+    );
+    await shoot(tester, app(), 'add_transaction');
+    // 红线 22 那台老机型（368×816 + 高输入法）：日期行会不会被自带键盘顶掉
+    await shoot(
+      tester,
+      app(),
+      'add_transaction_small',
+      size: const Size(368, 816),
+    );
+  });
+
+  testWidgets('添加日子', (tester) async {
+    final now = DateTime.now();
     await shoot(
       tester,
       MultiProvider(
         providers: [
-          ChangeNotifierProvider<LedgerProvider>.value(value: await _ledger(now)),
+          ChangeNotifierProvider<CountdownProvider>.value(
+            value: await _countdowns(now),
+          ),
+          ChangeNotifierProvider<MilestoneProvider>.value(
+            value: await _milestones(now),
+          ),
+        ],
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          home: const AddDayScreen(),
+        ),
+      ),
+      'add_day',
+    );
+  });
+
+  testWidgets('账本', (tester) async {
+    // ignore: invalid_use_of_visible_for_testing_member
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final now = DateTime.now();
+    final settings = SettingsProvider();
+    await settings.load();
+    // 设一个月度预算 + 两条红线，好看清预算卡长什么样
+    await settings.setBudget(
+      const BudgetPlan(total: 3000, tiers: <double>[1000, 2000]),
+    );
+    await shoot(
+      tester,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<LedgerProvider>.value(
+            value: await _ledger(now),
+          ),
           ChangeNotifierProvider<SettingsProvider>.value(value: settings),
         ],
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
-          home: const AddTransactionScreen(),
+          home: const LedgerScreen(),
         ),
       ),
-      'add_transaction',
+      'ledger',
+    );
+  });
+
+  testWidgets('添加日子（编辑一个纪念日）', (tester) async {
+    // 纪念日那条分支少了"重复 / 提醒"两行，得单独看一眼
+    final now = DateTime.now();
+    await shoot(
+      tester,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<CountdownProvider>.value(
+            value: await _countdowns(now),
+          ),
+          ChangeNotifierProvider<MilestoneProvider>.value(
+            value: await _milestones(now),
+          ),
+        ],
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          home: AddDayScreen(
+            milestone: Milestone(
+              id: 1,
+              title: '在一起',
+              startDate: now.subtract(const Duration(days: 126)),
+              note: '从这天开始',
+              createdAt: now,
+            ),
+          ),
+        ),
+      ),
+      'add_day_milestone',
     );
   });
 

@@ -290,16 +290,10 @@ class _HeadlineCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
           decoration: BoxDecoration(
             color: p.card,
-            // 通栏之后不能再留圆角了：屏幕边上会露出两个缺口
-            // 用户："人家把置顶那个框**全包围**" —— 用一条醒目的彩色边整圈框住
-            border: Border.all(color: color, width: 2),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.black.withValues(alpha: p.isDark ? 0.32 : 0.08),
-                blurRadius: 18,
-                offset: const Offset(0, 7),
-              ),
-            ],
+            // 用户 v1.6.15："两边的蓝条消掉、顶上那条也消掉，就留一条蓝色的分割线"
+            // —— 所以从"整圈彩色边框"改成"只有底部一条蓝线"。通栏方角不留圆角
+            // （屏幕边上会露缺口）。
+            border: Border(bottom: BorderSide(color: color, width: 2.4)),
           ),
           child: Row(
             children: [
@@ -349,18 +343,56 @@ class _HeadlineCard extends StatelessWidget {
               const SizedBox(width: 14),
               // 数字**不带那个小"天"**，而且**字体统一** ——
               // 自选的数字字体只在点进去的详情页生效（用户要求：列表页别混着来）
-              Text(
-                '${row.days}',
-                style: TextStyle(
-                  fontSize: 64,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -2,
-                  color: color,
-                ),
+              // 数字右边挂一颗红色小 DAY 标签（用户要的"单位"），底对齐
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${row.days}',
+                    style: TextStyle(
+                      fontSize: 64,
+                      height: 1,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -2,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 9),
+                    child: _DayTag(),
+                  ),
+                ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 置顶卡右下角那颗**红色小长方形**，里面写英文大写的 `DAY`。
+/// 用户："置顶那个没有单位，你搞一个红色的小长方形，里面写英文大写的 day，小小的，放在右边"
+class _DayTag extends StatelessWidget {
+  const _DayTag();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(6, 3, 6, 3),
+      decoration: BoxDecoration(
+        color: context.palette.danger,
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: const Text(
+        'DAY',
+        style: TextStyle(
+          fontSize: 10.5,
+          height: 1,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.8,
+          color: Colors.white,
         ),
       ),
     );

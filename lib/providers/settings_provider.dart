@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/budget.dart';
 import '../models/countdown_event.dart';
 import '../models/quick_entry.dart';
 import '../utils/haptics.dart';
@@ -15,6 +16,7 @@ class SettingsProvider extends ChangeNotifier {
   static const _kCountdownSort = 'countdown_sort';
   static const _kBirthdayPrefix = 'birthday_shown_';
   static const _kUseSystemKeyboard = 'use_system_keyboard';
+  static const _kBudget = 'monthly_budget';
 
   ThemeMode _themeMode = ThemeMode.system;
   bool _haptics = true;
@@ -70,6 +72,8 @@ class SettingsProvider extends ChangeNotifier {
       _countdownSort = sort;
     }
     _useSystemKeyboard = prefs.getBool(_kUseSystemKeyboard) ?? false;
+    final storedBudget = prefs.getString(_kBudget);
+    if (storedBudget != null) _budget = BudgetPlan.decode(storedBudget);
     // 生日惊喜：只记"哪个事件在哪天庆祝过了"，键名带前缀，扫一遍即可
     for (final key in prefs.getKeys()) {
       if (!key.startsWith(_kBirthdayPrefix)) continue;
@@ -184,6 +188,20 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kUseSystemKeyboard, value);
+  }
+
+  // ---------- 月度预算 ----------
+
+  BudgetPlan _budget = BudgetPlan.none;
+
+  /// 月度预算：总额 + 用户自己加的那几条金额红线（见 [BudgetPlan]）
+  BudgetPlan get budget => _budget;
+
+  Future<void> setBudget(BudgetPlan plan) async {
+    _budget = plan;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kBudget, plan.encode());
   }
 
   // ---------- 生日惊喜 ----------

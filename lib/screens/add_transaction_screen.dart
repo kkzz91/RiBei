@@ -510,26 +510,40 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _TypeSwitch(type: _type, onChanged: _switchType),
-                  const SizedBox(height: 18),
-                  _CategoryGrid(
-                    categories: categories,
-                    selected: _category,
-                    onSelected: (name) => setState(() => _category = name),
-                  ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 14),
+                  // ⚠️ 日期行**必须放在分类格前面**（用户反馈："自带键盘把选时间那一条挡住了"）。
+                  // 原因是这一页的可用高度 = 屏高 − 状态栏 − 顶栏48 − 底部栏(约356，含自带键盘)，
+                  // 一台 368×816 的机器算下来只剩约 356dp；而"支出/收入 + 分类格 + 备注"
+                  // 加起来就到 380dp 了 —— 日期行正好压在折叠线上被切掉。
+                  // 把日期提上来后，"切换 + 日期"只占约 115dp，任何屏都露得出来；
+                  // 分类格和备注本来就是要滚着看的。
+                  _DateRow(date: _date, onTap: _pickDate),
+                  const SizedBox(height: 14),
+                  // ⚠️ 备注框**必须排在分类格前面**：`test/layout_test.dart` 那条红线
+                  // （"弹出键盘并点亮备注后，备注框真的看得见"）钉着"备注框要落在视口内"。
+                  // 排在分类格后面时，键盘一弹上来它就被挤到视口外 ——
+                  // 而原来靠 `_revealNote` 的滚动动画兜底并不可靠（动画要等焦点后
+                  // 220ms + 300ms 两跳，某些 ROM 晚报 viewInsets 时根本来不及，用户就是盲打）。
+                  // 位置本身就保证可见，比"滚过去"稳。
                   TextField(
                     controller: _note,
                     focusNode: _noteFocus,
                     textInputAction: TextInputAction.done,
                     // 输入法被按没、焦点还在时，再点一次要能重新弹出来
                     onTap: () => _ensureKeyboard(_noteFocus),
+                    minLines: 1,
+                    maxLines: 3,
                     decoration: const InputDecoration(
                       hintText: '备注（可选）',
                       prefixIcon: Icon(Icons.edit_note, size: 20),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  _DateRow(date: _date, onTap: _pickDate),
+                  const SizedBox(height: 14),
+                  _CategoryGrid(
+                    categories: categories,
+                    selected: _category,
+                    onSelected: (name) => setState(() => _category = name),
+                  ),
                 ],
               ),
             ),

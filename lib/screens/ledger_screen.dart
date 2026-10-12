@@ -6,6 +6,8 @@ import '../providers/ledger_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/haptics.dart';
 import '../widgets/app_toast.dart';
+import '../widgets/budget_card.dart';
+import '../widgets/daily_spend_chart.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/pay_tag.dart';
 import '../widgets/pressable.dart';
@@ -152,6 +154,11 @@ class _LedgerScreenState extends State<LedgerScreen> {
             onPrev: () => _shiftMonth(-1),
             onNext: isCurrentMonth ? null : () => _shiftMonth(1),
           ),
+          const SizedBox(height: 14),
+          // 本月预算（总额 + 用户自己设的那几条金额红线）
+          BudgetCard(monthExpense: ledger.expenseOf(_month)),
+          const SizedBox(height: 12),
+          DailySpendChart(month: _month, records: ledger.records),
           const SizedBox(height: 22),
           if (groups.isEmpty)
             EmptyState(

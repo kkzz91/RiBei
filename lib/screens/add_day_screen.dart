@@ -177,6 +177,28 @@ class _AddDayScreenState extends State<AddDayScreen> {
     });
   }
 
+  /// 重复方式（记事本里点一行 → 底部弹一个列表）
+  Future<void> _pickRepeat() async {
+    final picked = await _pickFromList<int>(
+      title: '重复',
+      values: CountdownRepeat.labels.keys.toList(),
+      selected: _repeat,
+      labelOf: (v) => CountdownRepeat.labels[v] ?? '',
+    );
+    if (picked != null) setState(() => _repeat = picked);
+  }
+
+  /// 提前几天开始提醒
+  Future<void> _pickLeadDays() async {
+    final picked = await _pickFromList<int>(
+      title: '提前几天开始提醒',
+      values: _leadOptions,
+      selected: _leadDays,
+      labelOf: (v) => '$v 天',
+    );
+    if (picked != null) setState(() => _leadDays = picked);
+  }
+
   Future<T?> _pickFromList<T>({
     required String title,
     required List<T> values,
@@ -372,7 +394,6 @@ class _AddDayScreenState extends State<AddDayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final p = context.palette;
     final asMilestone = _willBeMilestone;
     final editingTypeChanged =
         _isEditing && asMilestone != (widget.milestone != null);
@@ -397,194 +418,159 @@ class _AddDayScreenState extends State<AddDayScreen> {
         // 顶栏是彩色条，内容顶部留 14 不贴上去
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
         children: [
-          // ① 名字
-          const _Label('名字'),
-          TextField(
-            controller: _title,
-            textInputAction: TextInputAction.next,
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              hintText: '比如：期末考试、在一起、发工资',
-            ),
-          ),
-          const SizedBox(height: 18),
-
-          // ② 公历 / 农历
-          const _Label('日历'),
-          _Segmented(
-            values: const [
-              CountdownCalendar.solar,
-              CountdownCalendar.lunar,
-            ],
-            selected: _calendar,
-            labelOf: (v) => v == CountdownCalendar.lunar ? '农历' : '公历',
-            onChanged: (v) => setState(() => _calendar = v),
-          ),
-          const SizedBox(height: 12),
-
-          // ③ 选日期
-          if (_isLunar)
-            Row(
-              children: [
-                Expanded(
-                  child: _PickerTile(
-                    icon: Icons.calendar_month_outlined,
-                    text: '${LunarDate.monthName(_lunarMonth)}月',
-                    sub: '农历月份',
-                    onTap: _pickLunarMonth,
+          // 用户要求（v1.6.15）：**不要一个一个独立的小方框**，要像记事本那样
+          // 一行一行、一行一个字段 —— 整页就是一张"纸"，行间走一条细线。
+          _NoteGroup(
+            children: [
+              // ① 第一行：小公文包 + 直接写名字
+              _NoteRow(
+                icon: Icons.work_outline,
+                child: TextField(
+                  controller: _title,
+                  textInputAction: TextInputAction.next,
+                  onChanged: (_) => setState(() {}),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: '名字，比如：期末考试',
+                    // 这一页的输入框都融进"纸"里，不要自己那一圈边框
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _PickerTile(
-                    icon: Icons.event_outlined,
-                    text: LunarDate.dayName(_lunarDay),
-                    sub: '农历日期',
-                    onTap: _pickLunarDay,
+              ),
+              // ② 公历 / 农历
+              _NoteRow(
+                icon: Icons.public_outlined,
+                label: '日历',
+                trailing: SizedBox(
+                  width: 128,
+                  child: _Segmented(
+                    values: const [
+                      CountdownCalendar.solar,
+                      CountdownCalendar.lunar,
+                    ],
+                    selected: _calendar,
+                    labelOf: (v) => v == CountdownCalendar.lunar ? '农历' : '公历',
+                    onChanged: (v) => setState(() => _calendar = v),
                   ),
                 ),
+              ),
+              // ③ 日期
+              if (_isLunar) ...[
+                _NoteRow(
+                  icon: Icons.calendar_month_outlined,
+                  label: '农历月份',
+                  value: '${LunarDate.monthName(_lunarMonth)}月',
+                  onTap: _pickLunarMonth,
+                ),
+                _NoteRow(
+                  icon: Icons.event_outlined,
+                  label: '农历日期',
+                  value: LunarDate.dayName(_lunarDay),
+                  onTap: _pickLunarDay,
+                ),
+              ] else
+                _NoteRow(
+                  icon: Icons.calendar_today_outlined,
+                  label: '日期',
+                  value: '${formatFullDate(_date)} · ${weekdayLabel(_date)}',
+                  onTap: _pickSolarDate,
+                ),
+              // ④ 只有"未来的日子"才需要重复 / 提醒
+              if (!asMilestone) ...[
+                _NoteRow(
+                  icon: Icons.repeat_outlined,
+                  label: '重复',
+                  value: CountdownRepeat.labels[_repeat] ?? '',
+                  onTap: _pickRepeat,
+                ),
+                _NoteRow(
+                  icon: Icons.notifications_none_outlined,
+                  label: '提醒',
+                  trailing: Switch(
+                    value: _remind,
+                    onChanged: (v) => setState(() => _remind = v),
+                  ),
+                ),
+                if (_remind) ...[
+                  _NoteRow(
+                    icon: Icons.hourglass_empty_outlined,
+                    label: '提前',
+                    value: '$_leadDays 天',
+                    onTap: _pickLeadDays,
+                  ),
+                  _NoteRow(
+                    icon: Icons.alarm_outlined,
+                    label: '提醒时间',
+                    value: formatClock(_hour, _minute),
+                    onTap: _pickTime,
+                  ),
+                ],
               ],
-            )
-          else
-            _PickerTile(
-              icon: Icons.calendar_today_outlined,
-              text: formatFullDate(_date),
-              sub: '${weekdayLabel(_date)} · 点一下改日期',
-              onTap: _pickSolarDate,
-            ),
-          const SizedBox(height: 10),
+              // ⑤ 外观：主题 / 数字字体 / 置顶
+              // 主题选择器自带"收起 → 点开 → 选完收回"，正好就是本子上的一行
+              ThemePicker(
+                value: _theme,
+                flat: true,
+                onChanged: (v) {
+                  Haptics.tap();
+                  setState(() => _theme = v);
+                },
+              ),
+              _NoteExpandRow(
+                icon: Icons.text_fields_outlined,
+                label: '数字字体',
+                value: DigitFont.labels[_digitFont] ?? '',
+                child: DigitFontPicker(
+                  value: _digitFont,
+                  onChanged: (v) => setState(() => _digitFont = v),
+                ),
+              ),
+              _NoteRow(
+                icon: Icons.push_pin_outlined,
+                label: '置顶',
+                trailing: Switch(
+                  value: _pinned,
+                  onChanged: (v) => setState(() => _pinned = v),
+                ),
+              ),
+              // ⑥ 备注
+              _NoteRow(
+                icon: Icons.edit_note_outlined,
+                child: TextField(
+                  controller: _note,
+                  maxLines: 3,
+                  minLines: 2,
+                  decoration: const InputDecoration(
+                    hintText: '备注（可选）',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
 
-          // ④ 自动判定结果：让用户明白它会存成哪一种
+          // ⑦ 自动判定结果：让用户明白它会存成哪一种
           _VerdictBanner(
             asMilestone: asMilestone,
             typeChanged: editingTypeChanged,
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 22),
 
-          // ⑤ 只有"未来的日子"才需要提醒 / 重复
-          if (!asMilestone) ...[
-            const _Label('重复'),
-            _Segmented(
-              values: CountdownRepeat.labels.keys.toList(),
-              selected: _repeat,
-              labelOf: (v) => CountdownRepeat.labels[v] ?? '',
-              onChanged: (v) => setState(() => _repeat = v),
-            ),
-            const SizedBox(height: 18),
-            const _Label('提醒'),
-            // 用 Material 而不是 Container：ListTile 的按压水波是画在**最近的 Material** 上的，
-            // 中间夹一层"带底色的 Container"会把水波盖掉（Flutter 会为此发断言，
-            // release 下断言被关掉、表现就成了"这一行按下去没任何反应"）。
-            Material(
-              color: p.card,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: p.line),
-              ),
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    value: _remind,
-                    onChanged: (v) => setState(() => _remind = v),
-                    contentPadding: const EdgeInsets.fromLTRB(16, 4, 10, 4),
-                    title: const Text(
-                      '临近时每天提醒',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        '从这天前 $_leadDays 天开始，每天一次，共 ${_leadDays + 1} 次',
-                        style: AppText.label(context).copyWith(fontSize: 12),
-                      ),
-                    ),
-                  ),
-                  if (_remind) ...[
-                    const Divider(height: 1, indent: 16, endIndent: 16),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final d in _leadOptions)
-                            _Chip(
-                              label: '$d 天',
-                              active: _leadDays == d,
-                              onTap: () => setState(() => _leadDays = d),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1, indent: 16, endIndent: 16),
-                    _PickerTile(
-                      icon: Icons.alarm_outlined,
-                      text: '每天 ${formatClock(_hour, _minute)} 提醒',
-                      sub: '手机上按这个时间弹通知',
-                      onTap: _pickTime,
-                      dense: true,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-          ],
-
-          // ⑥ 外观：主题 + 数字字体 + 置顶
-          const _Label('背景主题'),
-          ThemePicker(
-            value: _theme,
-            onChanged: (v) {
-              Haptics.tap();
-              setState(() => _theme = v);
-            },
-          ),
-          const SizedBox(height: 18),
-          const _Label('数字字体'),
-          DigitFontPicker(
-            value: _digitFont,
-            onChanged: (v) => setState(() => _digitFont = v),
-          ),
-          const SizedBox(height: 18),
-          // 同上：必须是 Material，不能是带底色的 Container（否则按压水波不可见）
-          Material(
-            color: p.card,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: p.line),
-            ),
-            child: SwitchListTile(
-              value: _pinned,
-              onChanged: (v) => setState(() => _pinned = v),
-              contentPadding: const EdgeInsets.fromLTRB(16, 4, 10, 4),
-              title: const Text(
-                '置顶',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  '在列表里放大显示在最上面（同一时刻只置顶一个）',
-                  style: AppText.label(context).copyWith(fontSize: 12),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-
-          // ⑦ 备注
-          const _Label('备注'),
-          TextField(
-            controller: _note,
-            maxLines: 3,
-            minLines: 2,
-            decoration: const InputDecoration(hintText: '可选'),
-          ),
-          const SizedBox(height: 26),
+          // ⑧ 保存 —— 单独一个方框（用户："最后一个独立的方框显示保存"）
           FilledButton(
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
@@ -600,16 +586,166 @@ class _AddDayScreenState extends State<AddDayScreen> {
 
 // ---------------------------------------------------------------- 零件
 
-class _Label extends StatelessWidget {
-  const _Label(this.text);
+/// 一页"纸"：把若干 [_NoteRow] 装在一个白底框里，行与行之间走一条细线。
+///
+/// 用户 v1.6.15："不要一个一个独立的小方框，要像记事本那种列表，一行一行"。
+/// ⚠️ 必须是 `Material` 不是 `Container` —— 里面的行用 `InkWell`，
+/// 水波画在**最近的 Material** 上，中间夹一层带底色的 `Container` 会把水波盖掉
+/// （和 v1.6.13 修 `SwitchListTile` 是同一个坑）。
+class _NoteGroup extends StatelessWidget {
+  const _NoteGroup({required this.children});
 
-  final String text;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-      child: Text(text, style: AppText.sectionTitle(context)),
+    final p = context.palette;
+    return Material(
+      color: p.card,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: p.line),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 1,
+                thickness: 1,
+                indent: 16,
+                endIndent: 16,
+                color: p.line,
+              ),
+            children[i],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 记事本上的一行：**左边一个图标**，然后是字段名，右边是当前值 / 控件。
+///
+/// 两种用法：
+///  * 给 [child]（名字、备注这种要放输入框的）—— 图标右边整片交给它；
+///  * 给 [value] / [trailing] / [onTap]（日期、重复、提醒这种）—— 右边显示值、
+///    放个开关，或者给个箭头表示"点一下能改"。
+class _NoteRow extends StatelessWidget {
+  const _NoteRow({
+    required this.icon,
+    this.label,
+    this.value,
+    this.trailing,
+    this.onTap,
+    this.child,
+  });
+
+  final IconData icon;
+  final String? label;
+  final String? value;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 52),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            Icon(icon, size: 19, color: p.inkSoft),
+            const SizedBox(width: 12),
+            if (child != null)
+              Expanded(child: child!)
+            else ...[
+              Text(
+                label ?? '',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: p.ink,
+                ),
+              ),
+              // 值要吃掉**剩下的全部宽度**（不给 Spacer 跟它抢，否则像
+              // "2026年10月20日 · 周一" 这种长值会被挤成省略号）
+              if (value != null)
+                Expanded(
+                  child: Text(
+                    value!,
+                    textAlign: TextAlign.right,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 14, color: p.inkSoft),
+                  ),
+                )
+              else
+                const Spacer(),
+              if (trailing != null) ...[
+                const SizedBox(width: 8),
+                trailing!,
+              ],
+              if (onTap != null) ...[
+                const SizedBox(width: 2),
+                Icon(Icons.chevron_right, size: 20, color: p.inkFaint),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 点一下**就地展开**的一行（数字字体这种需要一排选择的）。
+/// 主题选择器自己有收起/展开，没走这个。
+class _NoteExpandRow extends StatefulWidget {
+  const _NoteExpandRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.child,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Widget child;
+
+  @override
+  State<_NoteExpandRow> createState() => _NoteExpandRowState();
+}
+
+class _NoteExpandRowState extends State<_NoteExpandRow> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _NoteRow(
+          icon: widget.icon,
+          label: widget.label,
+          value: widget.value,
+          onTap: () => setState(() => _open = !_open),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          alignment: Alignment.topCenter,
+          child: _open
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: widget.child,
+                )
+              : const SizedBox(width: double.infinity),
+        ),
+      ],
     );
   }
 }
@@ -687,10 +823,10 @@ class _Segmented extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: p.card,
-        borderRadius: BorderRadius.circular(14),
+        color: p.isDark ? p.jadeSoft : p.paper,
+        borderRadius: BorderRadius.circular(11),
         border: Border.all(color: p.line),
       ),
       child: Row(
@@ -704,16 +840,16 @@ class _Segmented extends StatelessWidget {
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
-                  height: 40,
+                  height: 30,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: selected == v ? p.jade : Colors.transparent,
-                    borderRadius: BorderRadius.circular(11),
+                    borderRadius: BorderRadius.circular(9),
                   ),
                   child: Text(
                     labelOf(v),
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: selected == v
                           ? (p.isDark ? const Color(0xFF0B1F1A) : Colors.white)
@@ -729,106 +865,3 @@ class _Segmented extends StatelessWidget {
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? p.jade : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: active ? p.jade : p.line),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: active
-                ? (p.isDark ? const Color(0xFF0B1F1A) : Colors.white)
-                : p.inkSoft,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PickerTile extends StatelessWidget {
-  const _PickerTile({
-    required this.icon,
-    required this.text,
-    required this.sub,
-    required this.onTap,
-    this.dense = false,
-  });
-
-  final IconData icon;
-  final String text;
-  final String sub;
-  final VoidCallback onTap;
-  final bool dense;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    return Material(
-      color: dense ? Colors.transparent : p.card,
-      borderRadius: BorderRadius.circular(dense ? 0 : 14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: dense ? 12 : 14,
-          ),
-          decoration: dense
-              ? null
-              : BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: p.line),
-                ),
-          child: Row(
-            children: [
-              Icon(icon, size: 19, color: p.inkSoft),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      text,
-                      style: TextStyle(
-                        fontSize: dense ? 14.5 : 15,
-                        fontWeight: FontWeight.w600,
-                        color: p.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(sub, style: AppText.label(context)),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, size: 20, color: p.inkFaint),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

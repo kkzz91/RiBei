@@ -247,6 +247,9 @@ class AppTheme {
       // 底下压一条 1px 暗线做"分界"，**不用阴影** —— 阴影会让它显得是"浮在屏幕上的一层"（用户明确不喜欢）。
       appBarTheme: AppBarTheme(
         backgroundColor: p.jadeDeep,
+        // 用户："顶栏有点宽过头，窄一点" —— 56（M3 默认）→ 48。
+        // 注意：别低于 44，不然顶栏上那些 48dp 的 IconButton 会顶到边。
+        toolbarHeight: 48,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -254,7 +257,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         titleTextStyle: const TextStyle(
           color: Colors.white,
-          fontSize: 20,
+          fontSize: 18.5,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.4,
         ),
