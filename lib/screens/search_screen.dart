@@ -86,7 +86,8 @@ class _SearchScreenState extends State<SearchScreen> {
               hint: '换个关键字试试，或者只输金额的一部分',
             )
           : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              // 顶栏是彩色条，内容顶部留 14 不贴上去
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
               children: [
                 // 结果汇总
                 Container(

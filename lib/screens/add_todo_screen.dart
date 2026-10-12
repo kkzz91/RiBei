@@ -178,7 +178,8 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        // 顶栏是彩色条，内容顶部留 14 不贴上去
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
         children: [
           TextField(
             controller: _title,

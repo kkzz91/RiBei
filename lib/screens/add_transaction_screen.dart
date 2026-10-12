@@ -290,6 +290,22 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     await settings.touchQuickEntry(entry);
 
     if (!mounted) return;
+
+    // 连记模式下点常用：**只记一笔、别退出**。
+    // 「常用」是拿来一串串记的，一点就退出等于每次都得重新打开这一页
+    // （用户就是这么报的）。这里顺手把 _saving 放回去，否则后面点不动。
+    if (_batchMode && !_isEditing) {
+      setState(() {
+        _saving = false;
+        _batchCount += 1;
+      });
+      AppToast.show(
+        context,
+        '已记下 $_batchCount 笔 · ${entry.category} ${formatMoney(entry.amount)}',
+      );
+      return;
+    }
+
     AppToast.show(
       context,
       '已记账 · ${entry.category} ${formatMoney(entry.amount)}',
@@ -487,7 +503,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              // 顶部留 14：不然「支出 / 收入」那个切换框直接贴着顶栏的彩色条，
+              // 看着像粘在一起（用户反馈）。和账本页/倒计时页取同一个值。
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

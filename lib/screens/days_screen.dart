@@ -62,10 +62,16 @@ class DaysScreen extends StatelessWidget {
               hint: '把「期末考试」「在一起」这些日子记下来，\n它会帮你数着还有多久、或者已经过去多久。',
             )
           : ListView(
-              // 顶栏是深色条，内容要留一点间距，不然"最要紧的那天"直接贴着顶栏很难看
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
+              // 用户要求（v1.6.14）：列表**通栏** —— 置顶卡和每一条都贴屏幕左右边、
+              // 宽度跟顶栏一样，"像覆盖住整个页面"（原来左右各留 16）。
+              // 所以横向 padding 是 0，顶部仍留 14 不贴着顶栏。
+              padding: const EdgeInsets.fromLTRB(0, 14, 0, 32),
               children: [
-                const ReminderStatusBanner(),
+                // 权限提示条是"旁白"不是列表内容，得自己留回左右边距
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: ReminderStatusBanner(),
+                ),
                 if (featured != null) ...[
                   _HeadlineCard(
                     row: featured,
@@ -279,10 +285,12 @@ class _HeadlineCard extends StatelessWidget {
         onTap: onTap,
         onLongPress: onLongPress,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(18, 18, 16, 18),
+          // 置顶卡：**通栏方角**（左右贴边、宽度跟顶栏一样）+ 整体再大一圈
+          // —— 用户："那个格子再大一点，宽度跟顶栏一样，像覆盖住整个页面"
+          padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
           decoration: BoxDecoration(
             color: p.card,
-            borderRadius: BorderRadius.circular(22),
+            // 通栏之后不能再留圆角了：屏幕边上会露出两个缺口
             // 用户："人家把置顶那个框**全包围**" —— 用一条醒目的彩色边整圈框住
             border: Border.all(color: color, width: 2),
             boxShadow: <BoxShadow>[
@@ -344,7 +352,7 @@ class _HeadlineCard extends StatelessWidget {
               Text(
                 '${row.days}',
                 style: TextStyle(
-                  fontSize: 58,
+                  fontSize: 64,
                   height: 1,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -2,
@@ -381,18 +389,19 @@ class _DayTile extends StatelessWidget {
     final color = _badgeColor(row.past);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 9),
+      // 条与条之间留一条缝，**每条仍是自己的独立框**（用户 v1.6.7 明确要过"别连在一起"）
+      padding: const EdgeInsets.only(bottom: 8),
       child: GestureDetector(
         onTap: onTap,
         onLongPress: onLongPress,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          // 框**再小一点、更紧凑**（用户第二次说还是大）
-          height: 40,
+          // 通栏 + 方角（跟置顶卡、跟顶栏一个宽），并且**再细一点**：
+          // 行高 40 → 36，字号保持 18 —— 相对行高就更"饱满"（用户这次要的）
+          height: 36,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: p.card,
-            borderRadius: BorderRadius.circular(6),
             border: Border.all(color: p.line),
           ),
           child: Row(
@@ -401,7 +410,7 @@ class _DayTile extends StatelessWidget {
             children: [
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Row(
                     children: [
                       if (row.pinned) ...[
@@ -479,8 +488,8 @@ class _Badge extends StatelessWidget {
           ),
         ),
         Container(
-          // 「天」这一段（用户反馈原来 26 宽 / 12.5 号太小、不够好看）
-          width: 32,
+          // 「天」这一段再长一点（v1.6.13 是 32，用户这次还要长一些）
+          width: 36,
           color: _badgeDeep(past),
           alignment: Alignment.center,
           child: const Text(

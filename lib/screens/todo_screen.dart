@@ -165,7 +165,9 @@ class _TodoScreenState extends State<TodoScreen> {
               hint: '加一条，到点会提醒你。\n提醒要在系统里把权限开全才会稳。',
             )
           : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 104),
+              // 顶栏是彩色条，内容顶部留 12 不贴上去；下面每个分组标题自己还有 10 的上边距，
+              // 所以这里给得比别的页小一点（免得第一条分组的标题掉得太低）
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 104),
               children: [
                 const ReminderStatusBanner(),
                 // 全部处理完的那一下，给个明确的"收工"信号

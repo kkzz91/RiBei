@@ -78,7 +78,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        // 顶栏是彩色条，内容顶部留 14 不贴上去
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
         children: [
           const _SectionLabel('外观'),
           Card(

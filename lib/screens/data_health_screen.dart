@@ -122,7 +122,8 @@ class _DataHealthScreenState extends State<DataHealthScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('数据与备份')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+        // 顶栏是彩色条，内容顶部留 14 不贴上去
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
         children: [
           // ---------- 结论先行 ----------
           if (errors.isEmpty)

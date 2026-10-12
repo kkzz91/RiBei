@@ -180,7 +180,8 @@ class _ClearDataScreenState extends State<ClearDataScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('清空数据')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        // 顶栏是彩色条，内容顶部留 14 不贴上去
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
         children: [
           // 先摆清楚"现在有什么"，让人知道这一步的分量
           Card(

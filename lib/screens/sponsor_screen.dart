@@ -19,7 +19,8 @@ class SponsorScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('赞助作者')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+        // 顶栏是彩色条，内容顶部留 14 不贴上去
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
         children: [
           Container(
             padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),

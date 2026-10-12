@@ -70,3 +70,7 @@ app.*.map.json
 # 注意二：icon_preview.png / icon_detail.png 是 tools/make_icon.py 生成的产物，要保留，
 #         所以这里只排 .jpg，不排 .png。
 /*.jpg
+
+# 5. tools/preview_screens.dart 渲染出来的界面预览图（每张几百 KB，是看图的中间产物）
+# 脚本本身要进仓库（那是这个项目没有真机时唯一能看到界面的手段），图不用。
+/tools/preview_out/

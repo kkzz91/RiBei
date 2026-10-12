@@ -147,7 +147,8 @@ class _ShareBillScreenState extends State<ShareBillScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('分享账单')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        // 顶栏是彩色条，内容顶部留 14 不贴上去（原来 0，选范围的框直接粘在顶栏上）
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
         children: [
           // ---------- 选范围 ----------
           Row(

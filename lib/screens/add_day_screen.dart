@@ -394,7 +394,8 @@ class _AddDayScreenState extends State<AddDayScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+        // 顶栏是彩色条，内容顶部留 14 不贴上去
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
         children: [
           // ① 名字
           const _Label('名字'),
