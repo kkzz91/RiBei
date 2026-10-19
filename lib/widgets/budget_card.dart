@@ -416,6 +416,54 @@ class _BudgetSheetState extends State<_BudgetSheet> {
             _AmountField(controller: _total, hint: '比如 3000，留空就是不设'),
             const SizedBox(height: 18),
             const _FieldLabel('金额红线（可加好几条）'),
+            // 用户 v1.6.19："在设置额度那里提醒一下大家多设几条更好，是几条会有颜色变化，
+            // 有一行小字提醒一下" —— 不然这个功能很容易被忽略掉。
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                '建议多设几条：账本页那张卡会按你越过的条数依次变',
+                style: AppText.label(context).copyWith(
+                  fontSize: 11.5,
+                  height: 1.45,
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                Text(
+                  '黄 ',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFA8801A),
+                  ),
+                ),
+                Text(
+                  '橙 ',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFC4620F),
+                  ),
+                ),
+                Text(
+                  '红 ',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFC62828),
+                  ),
+                ),
+                Text(
+                  '黑，超预算 20% 以上直接变黑。',
+                  style: AppText.label(context).copyWith(
+                    fontSize: 11.5,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
             // 可能不止一屏，所以这块自己滚
             Flexible(
               child: ListView.separated(

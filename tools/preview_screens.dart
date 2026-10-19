@@ -360,8 +360,8 @@ void main() {
     'ledger_orange': BudgetPlan(total: 3000, tiers: <double>[100, 200]),
     // 红：超预算但没超过一成
     'ledger_red': BudgetPlan(total: 200, tiers: <double>[100, 200]),
-    // 黑：超预算一成以上（215 / 190 = 113%）
-    'ledger_black': BudgetPlan(total: 190, tiers: <double>[100]),
+    // 黑：超预算两成以上（215 / 175 = 123%）
+    'ledger_black': BudgetPlan(total: 175, tiers: <double>[100]),
   };
   for (final entry in budgetCases.entries) {
     testWidgets('账本（预算档位 ${entry.key}）', (tester) async {
@@ -390,6 +390,41 @@ void main() {
       );
     });
   }
+
+  testWidgets('预算设置弹层', (tester) async {
+    // ignore: invalid_use_of_visible_for_testing_member
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final now = DateTime.now();
+    final settings = SettingsProvider();
+    await settings.load();
+    await settings.setBudget(
+      const BudgetPlan(total: 3000, tiers: <double>[1000, 2000]),
+    );
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<LedgerProvider>.value(
+            value: await _ledger(now),
+          ),
+          ChangeNotifierProvider<SettingsProvider>.value(value: settings),
+        ],
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          home: const LedgerScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('本月预算'));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('preview_out/budget_sheet.png'),
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets('统计', (tester) async {
     final now = DateTime.now();

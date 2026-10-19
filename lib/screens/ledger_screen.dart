@@ -7,7 +7,6 @@ import '../theme/app_theme.dart';
 import '../utils/haptics.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/budget_card.dart';
-import '../widgets/daily_spend_chart.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/pay_tag.dart';
 import '../widgets/pressable.dart';
@@ -159,12 +158,12 @@ class _LedgerScreenState extends State<LedgerScreen> {
           // 本月预算（总额 + 用户自己设的那几条金额红线）
           BudgetCard(monthExpense: ledger.expenseOf(_month)),
           const SizedBox(height: 12),
-          // 「每天花了多少」：**内联就能看**（用户 v1.6.18：不用点开），
-          // 右上角那个小按钮才通向大图（可滑动看某天、下面还有按天表格）
-          DailySpendChart(
+          // 账本页这里**只留一行入口**（用户 v1.6.19："主页那个不用改、不用搞那么大"）。
+          // 想直接看每日图的去「统计」页，那里有一张内联的。
+          _DailyChartEntry(
             month: _month,
-            records: ledger.records,
-            onExpand: () => Navigator.of(context).push(
+            total: ledger.expenseOf(_month),
+            onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => DailyChartScreen(
                   month: _month,
@@ -387,6 +386,61 @@ class _MiniStat extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------- 流水
+
+/// 账本页上通往「每天花了多少」大图的那一行。
+///
+/// 用户 v1.6.19："主页那个不用改、不用搞那么大" —— 所以账本页就保留这一行，
+/// **不要再把它换成大图**；想直接看图的在「统计」页（那里有一张内联的）。
+class _DailyChartEntry extends StatelessWidget {
+  const _DailyChartEntry({
+    required this.month,
+    required this.total,
+    required this.onTap,
+  });
+
+  final DateTime month;
+  final double total;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Material(
+      color: p.card,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: p.line),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+          child: Row(
+            children: [
+              Icon(Icons.bar_chart_rounded, size: 19, color: p.inkSoft),
+              const SizedBox(width: 10),
+              Text(
+                '每天花了多少',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: p.ink,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${month.month}月共 ${formatMoney(total)}',
+                style: TextStyle(fontSize: 12.5, color: p.inkSoft),
+              ),
+              Icon(Icons.chevron_right, size: 20, color: p.inkFaint),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _DayGroup extends StatelessWidget {
   const _DayGroup({

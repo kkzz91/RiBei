@@ -60,9 +60,9 @@ void main() {
       expect(evaluateBudget(spent: 0, plan: p1).level, 0);
       expect(evaluateBudget(spent: 2999, plan: p1).level, 0);
       expect(evaluateBudget(spent: 3001, plan: p1).level, 3);
-      // 但超得太狠（>一成）就是黑
-      expect(evaluateBudget(spent: 3300, plan: p1).level, 3);
-      expect(evaluateBudget(spent: 3300.01, plan: p1).level, 4);
+      // 但超得太狠（> 20%，也就是 120% 以上）才是黑
+      expect(evaluateBudget(spent: 3600, plan: p1).level, 3);
+      expect(evaluateBudget(spent: 3600.01, plan: p1).level, 4);
     });
 
     test('跨过第几条红线就走第几档（没超预算的前提下）', () {
@@ -80,12 +80,12 @@ void main() {
       expect(evaluateBudget(spent: 5500, plan: p5).level, 3);
     });
 
-    test('黑档看的是"超预算一成"，不再要求红线设在总额之外', () {
+    test('黑档看的是"超预算两成"，不要求红线设在总额之外', () {
       // 用户的原话：一般人设的预算总额本身就是最后一条红线
       const p = BudgetPlan(total: 3000, tiers: <double>[2000]);
-      expect(evaluateBudget(spent: 3299, plan: p).level, 3);
-      expect(evaluateBudget(spent: 3301, plan: p).level, 4);
-      expect(evaluateBudget(spent: 3301, plan: p).farOverBudget, isTrue);
+      expect(evaluateBudget(spent: 3599, plan: p).level, 3);
+      expect(evaluateBudget(spent: 3601, plan: p).level, 4);
+      expect(evaluateBudget(spent: 3601, plan: p).farOverBudget, isTrue);
       // 红线设在总额之外也不会额外触发什么
       const q = BudgetPlan(total: 1000, tiers: <double>[1500]);
       expect(evaluateBudget(spent: 1600, plan: q).level, 4); // 因为超了 60%
@@ -100,13 +100,14 @@ void main() {
       expect(evaluateBudget(spent: 99999, plan: p).level, 2);
     });
 
-    test('黑比红优先：又超预算又超过一成时是黑', () {
+    test('黑比红优先：又超预算又超过两成时是黑', () {
       const p = BudgetPlan(total: 1000, tiers: <double>[500]);
-      expect(evaluateBudget(spent: 1200, plan: p).level, 4);
+      expect(evaluateBudget(spent: 1201, plan: p).level, 4);
       const q = BudgetPlan(total: 1000);
       expect(evaluateBudget(spent: 1001, plan: q).level, 3);
-      expect(evaluateBudget(spent: 1100, plan: q).level, 3);
-      expect(evaluateBudget(spent: 1100.5, plan: q).level, 4);
+      // 正好 120% 还不算黑（要"超过"）
+      expect(evaluateBudget(spent: 1200, plan: q).level, 3);
+      expect(evaluateBudget(spent: 1200.5, plan: q).level, 4);
     });
   });
 
