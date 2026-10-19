@@ -225,11 +225,26 @@ void main() {
           const MethodChannel('dexterous.com/flutter/local_notifications'),
           (call) async => true,
         );
-    // 系统中文字体挂到默认字族上，否则文字是黑方块
-    final bytes = File(r'C:\Windows\Fonts\simhei.ttf').readAsBytesSync();
+    // 系统中文字体挂到默认字族上，否则文字是黑方块。
+    // 用**等线（Deng）**而不是黑体：黑体缺 `¥` 字形，出的图上金额会变成方块。
+    final bytes = File(r'C:\Windows\Fonts\Deng.ttf').readAsBytesSync();
     final loader = FontLoader('Roboto')
       ..addFont(Future.value(ByteData.view(Uint8List.fromList(bytes).buffer)));
     await loader.load();
+    // **图标字体**也从 Flutter SDK 里借一份：不挂的话所有图标都是方块，
+    // 这样出的图才能当截图用（README 里那几张就是这么来的）
+    final iconFont = File(
+      r'C:\dev\flutter\bin\cache\artifacts\material_fonts\materialicons-regular.otf',
+    );
+    if (iconFont.existsSync()) {
+      final iconLoader = FontLoader('MaterialIcons')
+        ..addFont(
+          Future.value(
+            ByteData.view(Uint8List.fromList(iconFont.readAsBytesSync()).buffer),
+          ),
+        );
+      await iconLoader.load();
+    }
   });
 
   /// 拍一张：`file` 相对 tools/，所以会落在 tools/preview_out/
