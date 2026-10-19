@@ -55,22 +55,23 @@ void main() {
   });
 
   group('五档颜色（绿 / 黄 / 橙 / 红 / 黑）', () {
-    test('没设红线就正常用：绿，超了预算才是红', () {
+    test('没设红线就只有绿和红：在预算内绿、超了红', () {
       const p1 = BudgetPlan(total: 3000);
       expect(evaluateBudget(spent: 0, plan: p1).level, 0);
       expect(evaluateBudget(spent: 2999, plan: p1).level, 0);
       expect(evaluateBudget(spent: 3001, plan: p1).level, 3);
-      // 一条红线都没设时 black 永远不该出现
-      expect(evaluateBudget(spent: 99999, plan: p1).level, 3);
+      // 但超得太狠（>一成）就是黑
+      expect(evaluateBudget(spent: 3300, plan: p1).level, 3);
+      expect(evaluateBudget(spent: 3300.01, plan: p1).level, 4);
     });
 
-    test('跨过第几条红线就走第几档', () {
+    test('跨过第几条红线就走第几档（没超预算的前提下）', () {
       const p2 = BudgetPlan(total: 9000, tiers: <double>[1000, 2000, 3000]);
       expect(evaluateBudget(spent: 500, plan: p2).level, 0);
       expect(evaluateBudget(spent: 1500, plan: p2).level, 1);
       expect(evaluateBudget(spent: 2500, plan: p2).level, 2);
       expect(evaluateBudget(spent: 3500, plan: p2).level, 3);
-      // 第 4、5 条也还是红（档位到红为止，除了"超出总额的那条"）
+      // 第 4、5 条也还是红
       const p5 = BudgetPlan(
         total: 9000,
         tiers: <double>[1000, 2000, 3000, 4000, 5000],
@@ -79,29 +80,33 @@ void main() {
       expect(evaluateBudget(spent: 5500, plan: p5).level, 3);
     });
 
-    test('红线设在总额之外、且真的越过了 ⇒ 黑', () {
-      const p = BudgetPlan(total: 3000, tiers: <double>[2000, 5000]);
-      // 只跨过 2000（在总额内）→ 黄
-      expect(evaluateBudget(spent: 2500, plan: p).level, 1);
-      // 越过 5000（比总额还大）→ 黑
-      expect(evaluateBudget(spent: 5001, plan: p).level, 4);
-      expect(evaluateBudget(spent: 5001, plan: p).beyondTotalCrossed, isTrue);
+    test('黑档看的是"超预算一成"，不再要求红线设在总额之外', () {
+      // 用户的原话：一般人设的预算总额本身就是最后一条红线
+      const p = BudgetPlan(total: 3000, tiers: <double>[2000]);
+      expect(evaluateBudget(spent: 3299, plan: p).level, 3);
+      expect(evaluateBudget(spent: 3301, plan: p).level, 4);
+      expect(evaluateBudget(spent: 3301, plan: p).farOverBudget, isTrue);
+      // 红线设在总额之外也不会额外触发什么
+      const q = BudgetPlan(total: 1000, tiers: <double>[1500]);
+      expect(evaluateBudget(spent: 1600, plan: q).level, 4); // 因为超了 60%
+      expect(evaluateBudget(spent: 1050, plan: q).level, 3);
     });
 
-    test('没设总额时那条"之外的红线"规则不生效（否则每条都算"之外"）', () {
+    test('没设总额时不会因为"超预算"变红变黑', () {
       const p = BudgetPlan(tiers: <double>[1000, 2000]);
       expect(evaluateBudget(spent: 3000, plan: p).level, 2);
-      expect(evaluateBudget(spent: 3000, plan: p).beyondTotalCrossed, isFalse);
+      expect(evaluateBudget(spent: 3000, plan: p).farOverBudget, isFalse);
+      // 花到天上去也只是"两条红线都跨了" → 橙，不会变红/黑（没设预算就没有"超"这回事）
+      expect(evaluateBudget(spent: 99999, plan: p).level, 2);
     });
 
-    test('黑比红优先级高：同时超预算又越过那条线时还是黑', () {
+    test('黑比红优先：又超预算又超过一成时是黑', () {
       const p = BudgetPlan(total: 1000, tiers: <double>[500]);
-      // 跨过 500 → 黄；同时超了总额 1000 → 红…但这里没有"总额之外的红线"，
-      // 所以是红而不是黑
-      expect(evaluateBudget(spent: 1200, plan: p).level, 3);
-
-      const q = BudgetPlan(total: 1000, tiers: <double>[1500]);
-      expect(evaluateBudget(spent: 1600, plan: q).level, 4);
+      expect(evaluateBudget(spent: 1200, plan: p).level, 4);
+      const q = BudgetPlan(total: 1000);
+      expect(evaluateBudget(spent: 1001, plan: q).level, 3);
+      expect(evaluateBudget(spent: 1100, plan: q).level, 3);
+      expect(evaluateBudget(spent: 1100.5, plan: q).level, 4);
     });
   });
 

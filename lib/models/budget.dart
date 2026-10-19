@@ -92,27 +92,25 @@ class BudgetStatus {
     return spent > max ? spent : max;
   }
 
-  /// 有没有"设在预算总额**之外**的那条红线"被越过了。
+  /// **超出预算多少算"黑档"**：超支超过一成。
   ///
-  /// 只在设了总额（total > 0）时才算 —— 没设总额的话每条红线都在"外面"，
-  /// 那这个判断就没意义了。
-  bool get beyondTotalCrossed {
-    if (plan.total <= 0) return false;
-    for (final t in plan.tiers) {
-      if (t > plan.total && spent > t) return true;
-    }
-    return false;
-  }
+  /// 用户 v1.6.18："黑色触发...一般人设的那个目标金额本身就是最后一条红线了，
+  /// 所以不用强制用户去设一条超过预算的红线" —— 所以黑档不再要求"有红线设在总额之外"，
+  /// 改成**看超出预算的比例**。
+  static const blackOverRatio = 1.10;
+
+  /// 有没有把预算**超出一成以上**（黑档的触发条件）
+  bool get farOverBudget =>
+      plan.total > 0 && spent > plan.total * blackOverRatio;
 
   /// 预算卡的**档位**：0 绿 / 1 黄 / 2 橙 / 3 红 / 4 黑。
   ///
-  /// 用户 v1.6.17 定的规矩：
-  ///  · 没设红线 ⇒ 就正常用（绿；真超了预算才是红）
-  ///  · 设了红线 ⇒ **跨过第几条就走第几档**：1 条 = 黄、2 条 = 橙、3 条及以上 = 红
-  ///  · **黑**只用在一种情况：有一条红线**比预算总额还大**（"这条底线在你预算之外"），
-  ///    而花销真的越过了它 —— 那意味着连预算都拦不住你了
+  /// 用户 v1.6.18 定的规矩：
+  ///  · **没设红线** ⇒ 就只有绿和红（绿 = 在预算内、红 = 超了）
+  ///  · **设了红线** ⇒ 跨过第 1/2/3 条分别变 黄 / 橙 / 红，多出来的也还是红
+  ///  · **黑** ⇒ 超预算超过一成（`blackOverRatio`）
   int get level {
-    if (beyondTotalCrossed) return 4;
+    if (farOverBudget) return 4;
     if (overBudget || crossed >= 3) return 3;
     if (crossed == 2) return 2;
     if (crossed == 1) return 1;

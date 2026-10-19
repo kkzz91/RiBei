@@ -26,23 +26,26 @@ class BudgetCard extends StatelessWidget {
     final p = context.palette;
     final plan = context.watch<SettingsProvider>().budget;
     final status = evaluateBudget(spent: monthExpense, plan: plan);
-    final black = status.level >= 4;
+    final colors = tierSurface(p, status.level);
 
     return Material(
-      // 最严重那一档（红线设在总额之外、又真的越过了）**整张卡变黑**
-      // —— 用户："上面那个页变成黑色"。文字反过来用白的。
-      color: black ? const Color(0xFF141414) : p.card,
+      // 用户 v1.6.18："要让**上面那个大框**变色，不只是那根条"。
+      color: plan.hasPlan ? colors.bg : p.card,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: black ? Colors.transparent : p.line),
+        side: BorderSide(
+          color: plan.hasPlan && status.level > 0
+              ? Colors.transparent
+              : p.line,
+        ),
       ),
       child: InkWell(
         onTap: () => _openEditor(context, plan),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
           child: plan.hasPlan
-              ? _planBody(context, status, black)
+              ? _planBody(context, status, colors)
               : _emptyBody(context),
         ),
       ),
@@ -74,16 +77,16 @@ class BudgetCard extends StatelessWidget {
     );
   }
 
-  Widget _planBody(BuildContext context, BudgetStatus status, bool black) {
-    final p = context.palette;
-    // 五档强调的是这几个元素（进度条 / 百分比 / 底部那行），不是整张卡刷色 ——
-    // 只有最严重的"黑"档才整卡反色（在上面的 build 里做）
-    final accent = black ? Colors.white : tierBarColor(p, status.level);
-    final ink = black ? Colors.white : p.ink;
-    final soft = black ? Colors.white.withValues(alpha: 0.72) : p.inkSoft;
-    final track = black
-        ? Colors.white.withValues(alpha: 0.22)
-        : (p.isDark ? p.jadeSoft : p.line);
+  Widget _planBody(
+    BuildContext context,
+    BudgetStatus status,
+    ({Color bg, Color ink, Color soft, Color accent}) colors,
+  ) {
+    // 进度条和刻度在深色底上要用白的，在淡底（0 档）上要用玉青那套
+    final onLight = status.level == 0;
+    final track = onLight
+        ? (context.palette.isDark ? const Color(0xFF2C3A36) : Colors.white)
+        : Colors.white.withValues(alpha: 0.25);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,7 +95,7 @@ class BudgetCard extends StatelessWidget {
           children: [
             Text(
               '本月预算',
-              style: AppText.label(context).copyWith(color: soft),
+              style: AppText.label(context).copyWith(color: colors.soft),
             ),
             const Spacer(),
             if (status.plan.total > 0)
@@ -101,11 +104,11 @@ class BudgetCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: accent,
+                  color: colors.accent,
                 ),
               ),
             const SizedBox(width: 6),
-            Icon(Icons.edit_outlined, size: 16, color: soft),
+            Icon(Icons.edit_outlined, size: 16, color: colors.soft),
           ],
         ),
         const SizedBox(height: 4),
@@ -119,7 +122,7 @@ class BudgetCard extends StatelessWidget {
                 height: 1.1,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
-                color: ink,
+                color: colors.ink,
               ),
             ),
             if (status.plan.total > 0) ...[
@@ -128,16 +131,25 @@ class BudgetCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Text(
                   '/ ${formatMoney(status.plan.total)}',
-                  style: TextStyle(fontSize: 13.5, color: soft),
+                  style: TextStyle(fontSize: 13.5, color: colors.soft),
                 ),
               ),
             ],
           ],
         ),
         const SizedBox(height: 10),
-        _Bar(status: status, color: accent, track: track),
+        _Bar(
+          status: status,
+          color: colors.accent,
+          track: track,
+          tick: onLight ? Colors.black.withValues(alpha: 0.22) : Colors.black26,
+        ),
         const SizedBox(height: 9),
-        _StatusLine(status: status, color: accent, black: black),
+        _StatusLine(
+          status: status,
+          color: colors.accent,
+          soft: colors.soft,
+        ),
       ],
     );
   }
@@ -158,17 +170,59 @@ class BudgetCard extends StatelessWidget {
   }
 }
 
-/// 五档强调色：绿 / 黄 / 橙 / 红 / 黑（用户 v1.6.17 要的）。
+/// 五档强调色（进度条、百分比、底部那行图标用）。
 ///
 /// 这是**语义色**，不走 `palette` —— 调色板里没有"黄"，而且这几档要的是
 /// "一眼看出严重程度"，跟主题色追求的东西不一样。
-/// ⚠️ 第 0 档（绿）用 `p.jade`，跟着主题走；第 4 档（黑）在整卡反色时会被换掉。
 Color tierBarColor(AppPalette p, int level) => switch (level) {
   0 => p.jade,
   1 => const Color(0xFFD4A017), // 黄
   2 => const Color(0xFFE0761A), // 橙
   3 => const Color(0xFFC62828), // 红
   _ => const Color(0xFF141414), // 黑
+};
+
+/// 每一档的**整卡配色**（用户 v1.6.18："要让上面那个大框变色，不只是那根条"）。
+///
+/// · **0 档（绿）故意做成淡的**：它上面紧挨着那张深绿的「本月结余」卡，
+///   两张同色深卡糊在一起就没有层次了；而且"变脸"从跨第一条红线才开始，
+///   那一下才够醒目。
+/// · **1~4 档是实心深色 + 白字**：色值都压深了一档，保证白字在任何一档都读得清
+///   （纯黄配白字是看不清的）。
+({Color bg, Color ink, Color soft, Color accent}) tierSurface(
+  AppPalette p,
+  int level,
+) => switch (level) {
+  0 => (
+    bg: p.isDark ? const Color(0xFF1B2C27) : const Color(0xFFE7F0ED),
+    ink: p.ink,
+    soft: p.inkSoft,
+    accent: p.jade,
+  ),
+  1 => (
+    bg: const Color(0xFF8A6A12),
+    ink: Colors.white,
+    soft: Colors.white70,
+    accent: Colors.white,
+  ),
+  2 => (
+    bg: const Color(0xFFA9550F),
+    ink: Colors.white,
+    soft: Colors.white70,
+    accent: Colors.white,
+  ),
+  3 => (
+    bg: const Color(0xFF9E2323),
+    ink: Colors.white,
+    soft: Colors.white70,
+    accent: Colors.white,
+  ),
+  _ => (
+    bg: const Color(0xFF121212),
+    ink: Colors.white,
+    soft: Colors.white70,
+    accent: Colors.white,
+  ),
 };
 
 /// 进度条 + 红线刻度。
@@ -179,11 +233,13 @@ class _Bar extends StatelessWidget {
     required this.status,
     required this.color,
     required this.track,
+    required this.tick,
   });
 
   final BudgetStatus status;
   final Color color;
   final Color track;
+  final Color tick;
 
   @override
   Widget build(BuildContext context) {
@@ -212,11 +268,7 @@ class _Bar extends StatelessWidget {
               for (final tier in status.plan.tiers)
                 Positioned(
                   left: (tier / max) * w - 1,
-                  child: Container(
-                    width: 2,
-                    height: 8,
-                    color: Colors.black.withValues(alpha: 0.35),
-                  ),
+                  child: Container(width: 2, height: 8, color: tick),
                 ),
             ],
           ),
@@ -231,23 +283,19 @@ class _StatusLine extends StatelessWidget {
   const _StatusLine({
     required this.status,
     required this.color,
-    required this.black,
+    required this.soft,
   });
 
   final BudgetStatus status;
   final Color color;
-  final bool black;
+  final Color soft;
 
   @override
   Widget build(BuildContext context) {
-    final p = context.palette;
-    final faint = black
-        ? Colors.white.withValues(alpha: 0.6)
-        : p.inkFaint;
     final String text;
-    if (status.beyondTotalCrossed) {
-      // 最严重那一档：连"设在预算之外的那条底线"都破了，别再说什么"还剩多少"
-      text = '已越过你设在预算之外的那条红线';
+    if (status.farOverBudget) {
+      // 超了一成以上：别再说什么"还剩多少"
+      text = '已超预算 ${formatMoney(-status.remaining)}，超出一成了';
     } else if (status.overBudget) {
       text = '已超预算 ${formatMoney(-status.remaining)}';
     } else if (status.crossed > 0) {
@@ -285,7 +333,7 @@ class _StatusLine extends StatelessWidget {
         if (status.plan.tiers.isNotEmpty)
           Text(
             '红线 ${status.plan.tiers.map(_compact).join(' / ')}',
-            style: TextStyle(fontSize: 11.5, color: faint),
+            style: TextStyle(fontSize: 11.5, color: soft),
           ),
       ],
     );

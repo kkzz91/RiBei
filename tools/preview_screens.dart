@@ -27,6 +27,7 @@ import 'package:ribei/screens/daily_chart_screen.dart';
 import 'package:ribei/screens/days_screen.dart';
 import 'package:ribei/screens/ledger_screen.dart';
 import 'package:ribei/screens/share_bill_screen.dart';
+import 'package:ribei/screens/stats_screen.dart';
 import 'package:ribei/screens/todo_screen.dart';
 import 'package:ribei/theme/app_theme.dart';
 import 'package:ribei/utils/categories.dart';
@@ -349,12 +350,18 @@ void main() {
     );
   });
 
-  // 预算卡的几档颜色各出一张（同一份账，换不同的预算方案）
+  // 预算卡的几档颜色各出一张（同一份账 215 元，换不同的预算方案）
   const budgetCases = <String, BudgetPlan>{
+    // 绿：在预算内、红线都没碰
     'ledger': BudgetPlan(total: 3000, tiers: <double>[1000, 2000]),
-    'ledger_orange': BudgetPlan(total: 300, tiers: <double>[100, 200]),
-    'ledger_red': BudgetPlan(total: 200, tiers: <double>[100, 300]),
-    'ledger_black': BudgetPlan(total: 200, tiers: <double>[100, 210]),
+    // 黄：跨过 1 条红线
+    'ledger_yellow': BudgetPlan(total: 3000, tiers: <double>[100, 2000]),
+    // 橙：跨过 2 条
+    'ledger_orange': BudgetPlan(total: 3000, tiers: <double>[100, 200]),
+    // 红：超预算但没超过一成
+    'ledger_red': BudgetPlan(total: 200, tiers: <double>[100, 200]),
+    // 黑：超预算一成以上（215 / 190 = 113%）
+    'ledger_black': BudgetPlan(total: 190, tiers: <double>[100]),
   };
   for (final entry in budgetCases.entries) {
     testWidgets('账本（预算档位 ${entry.key}）', (tester) async {
@@ -383,6 +390,22 @@ void main() {
       );
     });
   }
+
+  testWidgets('统计', (tester) async {
+    final now = DateTime.now();
+    await shoot(
+      tester,
+      ChangeNotifierProvider<LedgerProvider>.value(
+        value: await _ledger(now),
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          home: const StatsScreen(),
+        ),
+      ),
+      'stats',
+    );
+  });
 
   testWidgets('账本：每天花了多少（大图）', (tester) async {
     final now = DateTime.now();

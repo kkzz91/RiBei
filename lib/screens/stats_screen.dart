@@ -10,8 +10,10 @@ import '../theme/app_theme.dart';
 import '../utils/categories.dart';
 import '../utils/formatters.dart';
 import '../utils/haptics.dart';
+import '../widgets/daily_spend_chart.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/pie_3d.dart';
+import 'daily_chart_screen.dart';
 import 'share_bill_screen.dart';
 
 class StatsScreen extends StatefulWidget {
@@ -79,6 +81,20 @@ class _StatsScreenState extends State<StatsScreen> {
           ],
           const SizedBox(height: 24),
           _TrendCard(data: ledger.trend(6)),
+          const SizedBox(height: 16),
+          // 「每天花了多少」内联就能看（用户 v1.6.18）；右上角小按钮通向大图
+          DailySpendChart(
+            month: _month,
+            records: ledger.records,
+            onExpand: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => DailyChartScreen(
+                  month: _month,
+                  records: ledger.records,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -410,7 +426,10 @@ class _TrendCard extends StatelessWidget {
       for (final s in data) ...[s.expense, s.income],
     ];
     final peak = values.isEmpty ? 0.0 : values.reduce(math.max);
-    final maxY = peak <= 0 ? 100.0 : peak * 1.25;
+    // 顶上加 40% 的余量（原 25%）：手指按住柱子时弹出的提示框是画在**柱子上方**的，
+    // 余量不够就会被顶到上面那行文字里去（用户 v1.6.18 报的"柱状图升起来挡到字"）。
+    // 只有一个月有数据时最容易撞上 —— 那一根直接顶到顶。
+    final maxY = peak <= 0 ? 100.0 : peak * 1.4;
     final now = DateTime.now();
 
     // 柱子的渐变色：底部是主色、顶部提亮，看起来有厚度
@@ -440,7 +459,8 @@ class _TrendCard extends StatelessWidget {
               '点柱子看具体金额',
               style: AppText.label(context).copyWith(fontSize: 11),
             ),
-            const SizedBox(height: 14),
+            // 图和上面那两行字之间多留一点：提示框有地方站，就不会压到字
+            const SizedBox(height: 22),
             SizedBox(
               height: 172,
               child: peak <= 0
