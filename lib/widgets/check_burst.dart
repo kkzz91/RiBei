@@ -56,7 +56,10 @@ class _BurstLayerState extends State<_BurstLayer>
   void initState() {
     super.initState();
     _controller.forward().whenComplete(() {
-      if (mounted) widget.onDone();
+      // ⚠️ 不要写 `if (mounted)`：动画播完时组件可能已经卸载，
+      // 那样 overlay 里那条就**永远不摘**了（和 AppToast 是同一个坑，见那个文件的注释）。
+      // 这里外面套了 IgnorePointer，所以不会吃点击，但会白留一层看不见的浮层。
+      widget.onDone();
     });
   }
 

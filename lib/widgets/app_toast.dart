@@ -44,7 +44,6 @@ class AppToast {
     _current = entry;
     overlay.insert(entry);
   }
-
   static void _clearIfCurrent(OverlayEntry entry) {
     if (!identical(_current, entry)) return;
     if (entry.mounted) entry.remove();
@@ -90,9 +89,11 @@ class _ToastCardState extends State<_ToastCard>
   }
 
   Future<void> _dismiss() async {
-    if (!mounted) return;
-    await _controller.reverse();
-    if (!mounted) return;
+    if (mounted) await _controller.reverse();
+    // ⚠️ **不管还在不在，都要把 overlay 那条摘掉。**
+    // 原来这里是 `if (!mounted) return;` —— 只要动画播完时组件已经卸载，
+    // 那条浮层就**永远留在最上层**：虽然透明看不见，但**照样吃掉点击**。
+    // 用户 v1.6.19 报的"顶栏按钮点了没反应"就是它（浮层正好盖在右上角那几个按钮上）。
     widget.onDismissed();
   }
 
@@ -110,7 +111,12 @@ class _ToastCardState extends State<_ToastCard>
       top: 0,
       left: 0,
       right: 0,
-      child: SafeArea(
+      // ⚠️ `IgnorePointer` 必须在 `Positioned` **里面**（Positioned 得是 Stack 的直接子节点），
+      // 而且这一层是**必须的**：这条提示是纯展示、不含任何可点的东西，
+      // 它浮在**根 overlay** 上、位置又正好压着顶栏右上角那几个按钮 ——
+      // 不加的话它（包括淡出到全透明的最后一帧）会把底下的按钮点击全吃掉。
+      child: IgnorePointer(
+        child: SafeArea(
         child: Align(
           alignment: Alignment.topRight,
           child: Padding(
@@ -176,6 +182,7 @@ class _ToastCardState extends State<_ToastCard>
           ),
         ),
       ),
+    ),
     );
   }
 }
